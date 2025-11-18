@@ -1,13 +1,14 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Accelerometer } from "expo-sensors";
-import React, { useEffect, useState } from "react";
+import { Accelerometer, Gyroscope } from "expo-sensors";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -15,6 +16,13 @@ import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 interface AccelerationData {
+  x: number;
+  y: number;
+  z: number;
+  timestamp: number;
+}
+
+interface GyroscopeData {
   x: number;
   y: number;
   z: number;
@@ -36,7 +44,16 @@ export default function MotionMeterScreen() {
     z: 0,
     timestamp: 0,
   });
+  const [gyroData, setGyroData] = useState<GyroscopeData>({
+    x: 0,
+    y: 0,
+    z: 0,
+    timestamp: 0,
+  });
   const [subscription, setSubscription] = useState<any>(null);
+  const [gyroSubscription, setGyroSubscription] = useState<any>(null);
+  const subscriptionRef = useRef<any>(null);
+  const gyroSubscriptionRef = useRef<any>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedData, setRecordedData] = useState<AccelerationData[]>([]);
   const [maxAcceleration, setMaxAcceleration] = useState(0);
@@ -49,15 +66,43 @@ export default function MotionMeterScreen() {
   });
   const [isCalibrated, setIsCalibrated] = useState(false);
 
+  // 운동 에너지 계산을 위한 상태
+  const [mHead, setMHead] = useState<string>(""); // 타격부 질량 (kg)
+  const [rHead, setRHead] = useState<string>(""); // 회전반경 (m)
+  const [angularVelocity, setAngularVelocity] = useState<number>(0); // 각속도 (rad/s)
+  const [kineticEnergy, setKineticEnergy] = useState<number>(0); // 운동 에너지 (J)
+
+  // ref를 사용하여 최신 값 참조 (closure 문제 방지)
+  const gravityOffsetRef = useRef<GravityOffset>(gravityOffset);
+  const isRecordingRef = useRef<boolean>(isRecording);
+
+  // ref 업데이트
   useEffect(() => {
+    gravityOffsetRef.current = gravityOffset;
+  }, [gravityOffset]);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
+
+  useEffect(() => {
+    // 센서 업데이트 간격 설정
     Accelerometer.setUpdateInterval(100); // 100ms마다 업데이트
+    Gyroscope.setUpdateInterval(100); // 100ms마다 업데이트
+
+    // 저장된 세션 불러오기
     loadSavedSessions();
+
+    // 컴포넌트 언마운트 시 정리
     return () => {
-      if (subscription) {
-        subscription.remove();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+      }
+      if (gyroSubscriptionRef.current) {
+        gyroSubscriptionRef.current.remove();
       }
     };
-  }, [subscription]);
+  }, []); // 빈 배열로 변경하여 마운트 시 한 번만 실행
 
   const loadSavedSessions = async () => {
     try {
@@ -77,47 +122,103 @@ export default function MotionMeterScreen() {
     }
   };
 
-  const _subscribe = () => {
-    const newSubscription = Accelerometer.addListener((accelerometerData) => {
-      const newData = {
-        x: accelerometerData.x,
-        y: accelerometerData.y,
-        z: accelerometerData.z,
-        timestamp: Date.now(),
-      };
-      setData(newData);
-
-      // 중력 보정된 가속도 계산
-      const correctedX = newData.x - gravityOffset.x;
-      const correctedY = newData.y - gravityOffset.y;
-      const correctedZ = newData.z - gravityOffset.z;
-
-      // 최대 가속도 계산 (중력 보정 후)
-      const magnitude = Math.sqrt(
-        correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
-      );
-      setMaxAcceleration((prev) => Math.max(prev, magnitude));
-
-      // 그래프 데이터 업데이트 (최대 50개 데이터 포인트 유지)
-      setGraphData((prev) => {
-        const newGraphData = [...prev, magnitude];
-        return newGraphData.length > 50
-          ? newGraphData.slice(-50)
-          : newGraphData;
-      });
-
-      // 기록 중이면 데이터 저장
-      if (isRecording) {
-        setRecordedData((prev) => [...prev, newData]);
+  const _subscribe = useCallback(async () => {
+    try {
+      // 기존 리스너가 있으면 먼저 제거
+      if (subscriptionRef.current) {
+        subscriptionRef.current.remove();
+        subscriptionRef.current = null;
       }
-    });
-    setSubscription(newSubscription);
-  };
+      if (gyroSubscriptionRef.current) {
+        gyroSubscriptionRef.current.remove();
+        gyroSubscriptionRef.current = null;
+      }
+
+      // 가속도계 센서 사용 가능 여부 확인
+      const isAccelerometerAvailable = await Accelerometer.isAvailableAsync();
+      if (!isAccelerometerAvailable) {
+        Alert.alert("오류", "가속도계 센서를 사용할 수 없습니다.");
+        return;
+      }
+
+      // 자이로스코프 센서 사용 가능 여부 확인
+      const isGyroscopeAvailable = await Gyroscope.isAvailableAsync();
+      if (!isGyroscopeAvailable) {
+        Alert.alert("오류", "자이로스코프 센서를 사용할 수 없습니다.");
+        return;
+      }
+
+      const newSubscription = Accelerometer.addListener((accelerometerData) => {
+        const newData = {
+          x: accelerometerData.x,
+          y: accelerometerData.y,
+          z: accelerometerData.z,
+          timestamp: Date.now(),
+        };
+        setData(newData);
+
+        // 중력 보정된 가속도 계산 (ref 사용)
+        const offset = gravityOffsetRef.current;
+        const correctedX = newData.x - offset.x;
+        const correctedY = newData.y - offset.y;
+        const correctedZ = newData.z - offset.z;
+
+        // 최대 가속도 계산 (중력 보정 후)
+        const magnitude = Math.sqrt(
+          correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
+        );
+        setMaxAcceleration((prev) => Math.max(prev, magnitude));
+
+        // 그래프 데이터 업데이트 (최대 50개 데이터 포인트 유지)
+        setGraphData((prev) => {
+          const newGraphData = [...prev, magnitude];
+          return newGraphData.length > 50
+            ? newGraphData.slice(-50)
+            : newGraphData;
+        });
+
+        // 기록 중이면 데이터 저장 (ref 사용)
+        if (isRecordingRef.current) {
+          setRecordedData((prev) => [...prev, newData]);
+        }
+      });
+      setSubscription(newSubscription);
+      subscriptionRef.current = newSubscription;
+
+      // 자이로스코프 리스너 추가
+      const newGyroSubscription = Gyroscope.addListener((gyroscopeData) => {
+        const newGyroData = {
+          x: gyroscopeData.x,
+          y: gyroscopeData.y,
+          z: gyroscopeData.z,
+          timestamp: Date.now(),
+        };
+        setGyroData(newGyroData);
+
+        // 각속도 크기 계산 (rad/s)
+        const omega = Math.sqrt(
+          newGyroData.x ** 2 + newGyroData.y ** 2 + newGyroData.z ** 2
+        );
+        setAngularVelocity(omega);
+      });
+      setGyroSubscription(newGyroSubscription);
+      gyroSubscriptionRef.current = newGyroSubscription;
+    } catch (error) {
+      console.error("센서 구독 오류:", error);
+      Alert.alert("오류", "센서를 시작하는 중 오류가 발생했습니다.");
+    }
+  }, []); // 빈 배열 - 함수는 한 번만 생성
 
   const _unsubscribe = () => {
-    if (subscription) {
-      subscription.remove();
+    if (subscriptionRef.current) {
+      subscriptionRef.current.remove();
+      subscriptionRef.current = null;
       setSubscription(null);
+    }
+    if (gyroSubscriptionRef.current) {
+      gyroSubscriptionRef.current.remove();
+      gyroSubscriptionRef.current = null;
+      setGyroSubscription(null);
     }
   };
 
@@ -143,7 +244,7 @@ export default function MotionMeterScreen() {
   };
 
   const calibrateGravity = async () => {
-    if (!subscription) {
+    if (!subscription || !gyroSubscription) {
       Alert.alert("알림", "먼저 측정을 시작해주세요.");
       return;
     }
@@ -245,6 +346,18 @@ export default function MotionMeterScreen() {
     correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
   );
 
+  // 운동 에너지 계산 (m_head와 r_head가 입력되었을 때)
+  useEffect(() => {
+    const m = parseFloat(mHead) || 0;
+    const r = parseFloat(rHead) || 0;
+    if (m > 0 && r > 0 && angularVelocity > 0) {
+      const energy = (1 / 2) * m * r * r * angularVelocity * angularVelocity;
+      setKineticEnergy(energy);
+    } else {
+      setKineticEnergy(0);
+    }
+  }, [mHead, rHead, angularVelocity]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView style={styles.container}>
@@ -252,7 +365,9 @@ export default function MotionMeterScreen() {
           <ThemedText type="title" style={styles.title}>
             Motion Meter
           </ThemedText>
-          <ThemedText style={styles.subtitle}>핸드폰 가속도 측정기</ThemedText>
+          <ThemedText style={styles.subtitle}>
+            운동 에너지 계산기 (E = ½ × m × r² × ω²)
+          </ThemedText>
         </ThemedView>
 
         <ThemedView style={styles.controlPanel}>
@@ -307,6 +422,108 @@ export default function MotionMeterScreen() {
               {isCalibrated ? "중력 보정됨" : "중력 캘리브레이션"}
             </ThemedText>
           </TouchableOpacity>
+        </ThemedView>
+
+        {/* 운동 에너지 계산 입력 섹션 */}
+        <ThemedView style={styles.energyContainer}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            운동 에너지 계산 설정
+          </ThemedText>
+
+          <View style={styles.inputRow}>
+            <ThemedText style={styles.inputLabel}>
+              타격부 질량 (m_head, kg):
+            </ThemedText>
+            <TextInput
+              style={styles.input}
+              value={mHead}
+              onChangeText={setMHead}
+              placeholder="예: 0.5"
+              keyboardType="decimal-pad"
+              placeholderTextColor="#999"
+            />
+          </View>
+
+          <View style={styles.inputRow}>
+            <ThemedText style={styles.inputLabel}>
+              회전반경 (r_head, m):
+            </ThemedText>
+            <TextInput
+              style={styles.input}
+              value={rHead}
+              onChangeText={setRHead}
+              placeholder="예: 0.3"
+              keyboardType="decimal-pad"
+              placeholderTextColor="#999"
+            />
+          </View>
+
+          <View style={styles.energyResultContainer}>
+            <ThemedText type="subtitle" style={styles.energyTitle}>
+              계산 결과
+            </ThemedText>
+
+            <View style={styles.dataRow}>
+              <ThemedText style={styles.dataLabel}>각속도 (ω):</ThemedText>
+              <ThemedText style={[styles.dataValue, styles.omegaValue]}>
+                {angularVelocity.toFixed(4)} rad/s
+              </ThemedText>
+            </View>
+
+            <View style={styles.dataRow}>
+              <ThemedText style={styles.dataLabel}>운동 에너지 (E):</ThemedText>
+              <ThemedText style={[styles.dataValue, styles.energyValue]}>
+                {kineticEnergy.toFixed(4)} J
+              </ThemedText>
+            </View>
+
+            {kineticEnergy > 0 && (
+              <View style={styles.formulaContainer}>
+                <ThemedText style={styles.formulaText}>
+                  E = ½ × {parseFloat(mHead) || 0} × ({parseFloat(rHead) || 0})²
+                  × ({angularVelocity.toFixed(4)})²
+                </ThemedText>
+                <ThemedText style={styles.formulaText}>
+                  E = {kineticEnergy.toFixed(4)} J
+                </ThemedText>
+              </View>
+            )}
+          </View>
+        </ThemedView>
+
+        {/* 자이로스코프 데이터 섹션 */}
+        <ThemedView style={styles.dataContainer}>
+          <ThemedText type="subtitle" style={styles.sectionTitle}>
+            자이로스코프 데이터 (각속도)
+          </ThemedText>
+
+          <View style={styles.dataRow}>
+            <ThemedText style={styles.dataLabel}>X축 각속도:</ThemedText>
+            <ThemedText style={styles.dataValue}>
+              {gyroData.x.toFixed(4)} rad/s
+            </ThemedText>
+          </View>
+
+          <View style={styles.dataRow}>
+            <ThemedText style={styles.dataLabel}>Y축 각속도:</ThemedText>
+            <ThemedText style={styles.dataValue}>
+              {gyroData.y.toFixed(4)} rad/s
+            </ThemedText>
+          </View>
+
+          <View style={styles.dataRow}>
+            <ThemedText style={styles.dataLabel}>Z축 각속도:</ThemedText>
+            <ThemedText style={styles.dataValue}>
+              {gyroData.z.toFixed(4)} rad/s
+            </ThemedText>
+          </View>
+
+          <View style={styles.dataRow}>
+            <ThemedText style={styles.dataLabel}>합성 각속도 (|ω|):</ThemedText>
+            <ThemedText style={[styles.dataValue, styles.omegaValue]}>
+              {angularVelocity.toFixed(4)} rad/s
+            </ThemedText>
+          </View>
         </ThemedView>
 
         <ThemedView style={styles.dataContainer}>
@@ -676,5 +893,76 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
+  },
+  energyContainer: {
+    marginHorizontal: 15,
+    marginVertical: 10,
+    padding: 15,
+    borderRadius: 12,
+    backgroundColor: "white",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inputRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500",
+    flex: 1,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    color: "#333",
+    backgroundColor: "#f9f9f9",
+    marginLeft: 10,
+  },
+  energyResultContainer: {
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 2,
+    borderTopColor: "#4CAF50",
+  },
+  energyTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#4CAF50",
+  },
+  omegaValue: {
+    color: "#2196F3",
+  },
+  energyValue: {
+    color: "#4CAF50",
+    fontSize: 18,
+  },
+  formulaContainer: {
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: "#f0f7ff",
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: "#2196F3",
+  },
+  formulaText: {
+    fontSize: 14,
+    color: "#333",
+    fontFamily: "monospace",
+    marginVertical: 2,
   },
 });
