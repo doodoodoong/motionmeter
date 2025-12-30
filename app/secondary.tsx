@@ -6,12 +6,12 @@ import { useRouter } from "expo-router";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -66,9 +66,9 @@ export default function SecondaryScreen() {
   });
   const [isCalibrated, setIsCalibrated] = useState(false);
 
-  // 운동 에너지 계산을 위한 상태
-  const [mHead, setMHead] = useState<string>(""); // 타격부 질량 (kg)
-  const [rHead, setRHead] = useState<string>(""); // 회전반경 (m)
+  // 운동 에너지 계산을 위한 상태 (새로운 역학 모델 수식: E_simple = (1/2) × m_eff × (ω × L_tot)²)
+  const [mEff, setMEff] = useState<string>(""); // 유효 질량 m_eff (kg) = m_s + a × m_c
+  const [lTot, setLTot] = useState<string>(""); // 전체 길이 L_tot (m) = L_m + L_c + L_s
   const [angularVelocity, setAngularVelocity] = useState<number>(0); // 각속도 (rad/s)
   const [kineticEnergy, setKineticEnergy] = useState<number>(0); // 운동 에너지 (J)
 
@@ -346,17 +346,18 @@ export default function SecondaryScreen() {
     correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
   );
 
-  // 운동 에너지 계산 (m_head와 r_head가 입력되었을 때)
+  // 운동 에너지 계산 (단순 수식): E_simple = (1/2) × m_eff × (ω × L_tot)²
   useEffect(() => {
-    const m = parseFloat(mHead) || 0;
-    const r = parseFloat(rHead) || 0;
-    if (m > 0 && r > 0 && angularVelocity > 0) {
-      const energy = (1 / 2) * m * r * r * angularVelocity * angularVelocity;
+    const m = parseFloat(mEff) || 0; // 유효 질량 m_eff
+    const L = parseFloat(lTot) || 0; // 전체 길이 L_tot
+    if (m > 0 && L > 0 && angularVelocity > 0) {
+      const v_tip = angularVelocity * L; // 보조체 끝속도 v_tip = ω × L_tot
+      const energy = (1 / 2) * m * v_tip * v_tip;
       setKineticEnergy(energy);
     } else {
       setKineticEnergy(0);
     }
-  }, [mHead, rHead, angularVelocity]);
+  }, [mEff, lTot, angularVelocity]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -372,7 +373,7 @@ export default function SecondaryScreen() {
             Motion Meter
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            운동 에너지 계산기 (E = ½ × m × r² × ω²)
+            운동 에너지 계산기 (E = ½ × m_eff × (ω × L_tot)²)
           </ThemedText>
         </ThemedView>
 
@@ -438,12 +439,12 @@ export default function SecondaryScreen() {
 
           <View style={styles.inputRow}>
             <ThemedText style={styles.inputLabel}>
-              타격부 질량 (m_head, kg):
+              유효 질량 (m_eff, kg):
             </ThemedText>
             <TextInput
               style={styles.input}
-              value={mHead}
-              onChangeText={setMHead}
+              value={mEff}
+              onChangeText={setMEff}
               placeholder="예: 0.5"
               keyboardType="decimal-pad"
               placeholderTextColor="#999"
@@ -452,12 +453,12 @@ export default function SecondaryScreen() {
 
           <View style={styles.inputRow}>
             <ThemedText style={styles.inputLabel}>
-              회전반경 (r_head, m):
+              전체 길이 (L_tot, m):
             </ThemedText>
             <TextInput
               style={styles.input}
-              value={rHead}
-              onChangeText={setRHead}
+              value={lTot}
+              onChangeText={setLTot}
               placeholder="예: 0.3"
               keyboardType="decimal-pad"
               placeholderTextColor="#999"
@@ -486,8 +487,10 @@ export default function SecondaryScreen() {
             {kineticEnergy > 0 && (
               <View style={styles.formulaContainer}>
                 <ThemedText style={styles.formulaText}>
-                  E = ½ × {parseFloat(mHead) || 0} × ({parseFloat(rHead) || 0})²
-                  × ({angularVelocity.toFixed(4)})²
+                  E = ½ × {parseFloat(mEff) || 0} × ({angularVelocity.toFixed(4)} × {parseFloat(lTot) || 0})²
+                </ThemedText>
+                <ThemedText style={styles.formulaText}>
+                  v_tip = {(angularVelocity * (parseFloat(lTot) || 0)).toFixed(4)} m/s
                 </ThemedText>
                 <ThemedText style={styles.formulaText}>
                   E = {kineticEnergy.toFixed(4)} J

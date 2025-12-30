@@ -70,8 +70,9 @@ export default function ElementaryScreen() {
   const [kineticEnergy, setKineticEnergy] = useState<number>(0);
 
   // 기본 설정값 (초등학생용 - 고정값 사용)
-  const DEFAULT_MASS = 0.5; // 타격부 질량 (kg)
-  const DEFAULT_RADIUS = 0.3; // 회전반경 (m)
+  // 새로운 역학 모델 수식: E_simple = (1/2) × m_eff × (ω × L_tot)²
+  const DEFAULT_M_EFF = 0.5; // 유효 질량 m_eff (kg) = m_s + a × m_c
+  const DEFAULT_L_TOT = 0.3; // 전체 길이 L_tot (m) = L_m + L_c + L_s
 
   // ref를 사용하여 최신 값 참조 (closure 문제 방지)
   const gravityOffsetRef = useRef<GravityOffset>(gravityOffset);
@@ -197,8 +198,9 @@ export default function ElementaryScreen() {
         );
         setAngularVelocity(omega);
 
-        // 운동 에너지 계산: E = ½ × m × r² × ω²
-        const energy = (1 / 2) * DEFAULT_MASS * DEFAULT_RADIUS * DEFAULT_RADIUS * omega * omega;
+        // 운동 에너지 계산 (단순 수식): E_simple = ½ × m_eff × (ω × L_tot)²
+        const v_tip = omega * DEFAULT_L_TOT; // 보조체 끝속도 v_tip = ω × L_tot
+        const energy = (1 / 2) * DEFAULT_M_EFF * v_tip * v_tip;
         setKineticEnergy(energy);
       });
       setGyroSubscription(newGyroSubscription);
@@ -442,7 +444,7 @@ export default function ElementaryScreen() {
           <View style={styles.formulaBox}>
             <ThemedText style={styles.formulaLabel}>💡 에너지 공식:</ThemedText>
             <ThemedText style={styles.formulaText}>
-              움직임 힘 = ½ × 무게 × 거리² × 속도²
+              움직임 힘 = ½ × 무게 × (회전속도 × 길이)²
             </ThemedText>
           </View>
         </ThemedView>
