@@ -1,33 +1,21 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { fontScale, hp, moderateScale, SCREEN_WIDTH, wp } from "@/utils/responsive";
+import { CYBER_COLORS, CYBER_STYLES, NEON_GLOW, TEXT_GLOW } from "@/constants/theme";
+import { fontScale, hp, wp } from "@/utils/responsive";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { LineChart } from "react-native-chart-kit";
 import { SafeAreaView } from "react-native-safe-area-context";
-
-interface AccelerationData {
-  x: number;
-  y: number;
-  z: number;
-  timestamp: number;
-}
-
-interface GyroscopeData {
-  x: number;
-  y: number;
-  z: number;
-  timestamp: number;
-}
+import ViewShot from "react-native-view-shot";
 
 interface GravityOffset {
   x: number;
@@ -35,80 +23,49 @@ interface GravityOffset {
   z: number;
 }
 
+type MeasurementState = 'ready' | 'measuring' | 'result';
 
 export default function ElementaryScreen() {
   const router = useRouter();
-  const [data, setData] = useState<AccelerationData>({
-    x: 0,
-    y: 0,
-    z: 0,
-    timestamp: 0,
-  });
-  const [gyroData, setGyroData] = useState<GyroscopeData>({
-    x: 0,
-    y: 0,
-    z: 0,
-    timestamp: 0,
-  });
+  const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
+  
   const [subscription, setSubscription] = useState<any>(null);
   const [gyroSubscription, setGyroSubscription] = useState<any>(null);
   const subscriptionRef = useRef<any>(null);
   const gyroSubscriptionRef = useRef<any>(null);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedData, setRecordedData] = useState<AccelerationData[]>([]);
+  
   const [maxAcceleration, setMaxAcceleration] = useState(0);
-  const [graphData, setGraphData] = useState<number[]>([]);
-  const [gravityOffset, setGravityOffset] = useState<GravityOffset>({
-    x: 0,
-    y: 0,
-    z: 0,
-  });
+  const [maxAngularVelocity, setMaxAngularVelocity] = useState(0);
+  const [maxEnergy, setMaxEnergy] = useState(0);
+  
+  const [gravityOffset, setGravityOffset] = useState<GravityOffset>({ x: 0, y: 0, z: 0 });
   const [isCalibrated, setIsCalibrated] = useState(false);
 
-  // 각속도 및 운동에너지 상태
   const [angularVelocity, setAngularVelocity] = useState<number>(0);
   const [kineticEnergy, setKineticEnergy] = useState<number>(0);
 
-  // 기본 설정값 (초등학생용 - 고정값 사용)
-  // 새로운 역학 모델 수식: E_simple = (1/2) × m_eff × (ω × L_tot)²
-  const DEFAULT_M_EFF = 0.5; // 유효 질량 m_eff (kg) = m_s + a × m_c
-  const DEFAULT_L_TOT = 0.3; // 전체 길이 L_tot (m) = L_m + L_c + L_s
+  const DEFAULT_M_EFF = 0.5;
+  const DEFAULT_L_TOT = 0.3;
 
-  // ref를 사용하여 최신 값 참조 (closure 문제 방지)
   const gravityOffsetRef = useRef<GravityOffset>(gravityOffset);
-  const isRecordingRef = useRef<boolean>(isRecording);
 
-  // ref 업데이트
   useEffect(() => {
     gravityOffsetRef.current = gravityOffset;
   }, [gravityOffset]);
 
   useEffect(() => {
-    isRecordingRef.current = isRecording;
-  }, [isRecording]);
-
-  useEffect(() => {
-    // 센서 업데이트 간격 설정
     Accelerometer.setUpdateInterval(100);
     Gyroscope.setUpdateInterval(100);
-
-    // 저장된 세션 불러오기
     loadSavedSettings();
 
-    // 컴포넌트 언마운트 시 정리
     return () => {
-      if (subscriptionRef.current) {
-        subscriptionRef.current.remove();
-      }
-      if (gyroSubscriptionRef.current) {
-        gyroSubscriptionRef.current.remove();
-      }
+      if (subscriptionRef.current) subscriptionRef.current.remove();
+      if (gyroSubscriptionRef.current) gyroSubscriptionRef.current.remove();
     };
   }, []);
 
   const loadSavedSettings = async () => {
     try {
-      // 저장된 중력 오프셋 불러오기
       const savedOffset = await AsyncStorage.getItem("gravityOffset");
       if (savedOffset) {
         setGravityOffset(JSON.parse(savedOffset));
@@ -119,99 +76,56 @@ export default function ElementaryScreen() {
     }
   };
 
-  const _subscribe = useCallback(async () => {
+  const startMeasurement = useCallback(async () => {
+    if (!isCalibrated) {
+      Alert.alert("알림", "먼저 영점 맞추기를 완료해주세요!");
+      return;
+    }
+
     try {
-      // 기존 리스너가 있으면 먼저 제거
-      if (subscriptionRef.current) {
-        subscriptionRef.current.remove();
-        subscriptionRef.current = null;
-      }
-      if (gyroSubscriptionRef.current) {
-        gyroSubscriptionRef.current.remove();
-        gyroSubscriptionRef.current = null;
-      }
+      setMaxAcceleration(0);
+      setMaxAngularVelocity(0);
+      setMaxEnergy(0);
 
-      // 가속도계 센서 사용 가능 여부 확인
       const isAccelerometerAvailable = await Accelerometer.isAvailableAsync();
-      if (!isAccelerometerAvailable) {
-        Alert.alert("알림", "📱 이 기기에서는 움직임 센서를 사용할 수 없어요.");
-        return;
-      }
-
-      // 자이로스코프 센서 사용 가능 여부 확인
       const isGyroscopeAvailable = await Gyroscope.isAvailableAsync();
-      if (!isGyroscopeAvailable) {
-        Alert.alert("알림", "📱 이 기기에서는 회전 센서를 사용할 수 없어요.");
+      
+      if (!isAccelerometerAvailable || !isGyroscopeAvailable) {
+        Alert.alert("알림", "이 기기에서는 센서를 사용할 수 없어요.");
         return;
       }
 
       const newSubscription = Accelerometer.addListener((accelerometerData) => {
-        const newData = {
-          x: accelerometerData.x,
-          y: accelerometerData.y,
-          z: accelerometerData.z,
-          timestamp: Date.now(),
-        };
-        setData(newData);
-
-        // 중력 보정된 가속도 계산 (ref 사용)
         const offset = gravityOffsetRef.current;
-        const correctedX = newData.x - offset.x;
-        const correctedY = newData.y - offset.y;
-        const correctedZ = newData.z - offset.z;
-
-        // 최대 가속도 계산 (중력 보정 후)
-        const magnitude = Math.sqrt(
-          correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
-        );
+        const correctedX = accelerometerData.x - offset.x;
+        const correctedY = accelerometerData.y - offset.y;
+        const correctedZ = accelerometerData.z - offset.z;
+        const magnitude = Math.sqrt(correctedX ** 2 + correctedY ** 2 + correctedZ ** 2);
         setMaxAcceleration((prev) => Math.max(prev, magnitude));
-
-        // 그래프 데이터 업데이트 (최대 50개 데이터 포인트 유지)
-        setGraphData((prev) => {
-          const newGraphData = [...prev, magnitude];
-          return newGraphData.length > 50
-            ? newGraphData.slice(-50)
-            : newGraphData;
-        });
-
-        // 기록 중이면 데이터 저장 (ref 사용)
-        if (isRecordingRef.current) {
-          setRecordedData((prev) => [...prev, newData]);
-        }
       });
-      setSubscription(newSubscription);
       subscriptionRef.current = newSubscription;
+      setSubscription(newSubscription);
 
-      // 자이로스코프 리스너 추가
       const newGyroSubscription = Gyroscope.addListener((gyroscopeData) => {
-        const newGyroData = {
-          x: gyroscopeData.x,
-          y: gyroscopeData.y,
-          z: gyroscopeData.z,
-          timestamp: Date.now(),
-        };
-        setGyroData(newGyroData);
-
-        // 각속도 크기 계산 (rad/s)
-        const omega = Math.sqrt(
-          newGyroData.x ** 2 + newGyroData.y ** 2 + newGyroData.z ** 2
-        );
-        setAngularVelocity(omega);
-
-        // 운동 에너지 계산 (단순 수식): E_simple = ½ × m_eff × (ω × L_tot)²
-        const v_tip = omega * DEFAULT_L_TOT; // 보조체 끝속도 v_tip = ω × L_tot
+        const omega = Math.sqrt(gyroscopeData.x ** 2 + gyroscopeData.y ** 2 + gyroscopeData.z ** 2);
+        const v_tip = omega * DEFAULT_L_TOT;
         const energy = (1 / 2) * DEFAULT_M_EFF * v_tip * v_tip;
+        
+        setAngularVelocity(omega);
         setKineticEnergy(energy);
+        setMaxAngularVelocity((prev) => Math.max(prev, omega));
+        setMaxEnergy((prev) => Math.max(prev, energy));
       });
-      setGyroSubscription(newGyroSubscription);
       gyroSubscriptionRef.current = newGyroSubscription;
-    } catch (error) {
-      console.error("센서 시작 오류:", error);
-      Alert.alert("알림", "😢 센서를 시작하는데 문제가 생겼어요.");
-    }
-  }, []);
+      setGyroSubscription(newGyroSubscription);
 
-  const _unsubscribe = () => {
+      setMeasurementState('measuring');
+    } catch (error) {
+      Alert.alert("알림", "센서를 시작하는데 문제가 생겼어요.");
+    }
+  }, [isCalibrated]);
+
+  const stopMeasurement = () => {
     if (subscriptionRef.current) {
       subscriptionRef.current.remove();
       subscriptionRef.current = null;
@@ -222,304 +136,177 @@ export default function ElementaryScreen() {
       gyroSubscriptionRef.current = null;
       setGyroSubscription(null);
     }
+    setMeasurementState('result');
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      Alert.alert(
-        "🎉 기록 완료!",
-        `총 ${recordedData.length}개의 데이터를 기록했어요!`
-      );
-    } else {
-      setRecordedData([]);
-      setMaxAcceleration(0);
-      setIsRecording(true);
-    }
-  };
-
-  const resetData = () => {
+  const resetMeasurement = () => {
     setMaxAcceleration(0);
-    setRecordedData([]);
-    setGraphData([]);
-    setData({ x: 0, y: 0, z: 0, timestamp: 0 });
+    setMaxAngularVelocity(0);
+    setMaxEnergy(0);
+    setMeasurementState('ready');
   };
 
   const calibrateGravity = async () => {
-    if (!subscription || !gyroSubscription) {
-      Alert.alert("알림", "📱 먼저 '측정 시작' 버튼을 눌러주세요!");
-      return;
-    }
+    try {
+      const isAccelerometerAvailable = await Accelerometer.isAvailableAsync();
+      if (!isAccelerometerAvailable) {
+        Alert.alert("알림", "이 기기에서는 센서를 사용할 수 없어요.");
+        return;
+      }
 
-    Alert.alert(
-      "🎯 영점 맞추기",
-      "핸드폰을 평평한 곳에 놓고 3초만 가만히 있어주세요!",
-      [
+      Alert.alert("영점 맞추기", "핸드폰을 평평한 곳에 놓고 3초만 기다려주세요!", [
+        { text: "취소", style: "cancel" },
         {
-          text: "취소",
-          style: "cancel",
-        },
-        {
-          text: "시작!",
-          onPress: () => {
-            setTimeout(() => {
-              // 현재 가속도 값을 중력 오프셋으로 설정
-              const offset = {
-                x: data.x,
-                y: data.y,
-                z: data.z,
-              };
-
-              setGravityOffset(offset);
-              setIsCalibrated(true);
-
-              // AsyncStorage에 저장
-              AsyncStorage.setItem("gravityOffset", JSON.stringify(offset));
-
-              Alert.alert("✅ 완료!", "영점 맞추기가 끝났어요!");
-            }, 3000);
+          text: "시작",
+          onPress: async () => {
+            const tempSubscription = Accelerometer.addListener((accelerometerData) => {
+              setTimeout(() => {
+                const offset = { x: accelerometerData.x, y: accelerometerData.y, z: accelerometerData.z };
+                setGravityOffset(offset);
+                setIsCalibrated(true);
+                AsyncStorage.setItem("gravityOffset", JSON.stringify(offset));
+                Alert.alert("완료!", "영점 맞추기가 끝났어요!");
+                tempSubscription.remove();
+              }, 3000);
+            });
           },
         },
-      ]
-    );
+      ]);
+    } catch (error) {
+      console.error("캘리브레이션 오류:", error);
+    }
   };
 
-  // 중력 보정된 합성 가속도 계산
-  const correctedX = data.x - gravityOffset.x;
-  const correctedY = data.y - gravityOffset.y;
-  const correctedZ = data.z - gravityOffset.z;
-  const magnitude = Math.sqrt(
-    correctedX ** 2 + correctedY ** 2 + correctedZ ** 2
+  const getEnergyLevel = (value: number): string => {
+    if (value < 0.01) return "거의 없어요";
+    if (value < 0.1) return "조금 있어요";
+    if (value < 0.5) return "꽤 있어요!";
+    if (value < 1.0) return "많이 있어요!";
+    return "엄청 많아요!!";
+  };
+
+  const renderReadyScreen = () => (
+    <View style={styles.stateContainer}>
+      <View style={styles.readyBox}>
+        <ThemedText style={styles.readyTitle}>⚡ 측정 준비</ThemedText>
+        <ThemedText style={styles.readyDescription}>
+          편곤을 준비하고 측정 시작 버튼을 눌러주세요!
+        </ThemedText>
+      </View>
+
+      {!isCalibrated && (
+        <View style={styles.calibrationRequired}>
+          <ThemedText style={styles.calibrationTitle}>⚠️ 먼저 영점을 맞춰주세요!</ThemedText>
+          <TouchableOpacity style={styles.calibrateButton} onPress={calibrateGravity}>
+            <ThemedText style={styles.calibrateButtonText}>🎯 영점 맞추기</ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isCalibrated && (
+        <TouchableOpacity style={styles.startButton} onPress={startMeasurement}>
+          <ThemedText style={styles.startButtonText}>▶️ 측정 시작</ThemedText>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 
-  // 움직임 세기를 간단한 레벨로 변환 (0-5)
-  const getMovementLevel = (value: number): string => {
-    if (value < 0.1) return "🌙 아주 조용해요";
-    if (value < 0.5) return "🚶 살살 움직여요";
-    if (value < 1.0) return "🏃 빠르게 움직여요";
-    if (value < 2.0) return "💨 아주 빠르게!";
-    return "🚀 엄청 빠르게!!";
+  const renderMeasuringScreen = () => (
+    <View style={styles.stateContainer}>
+      <View style={styles.measuringBox}>
+        <ThemedText style={styles.measuringTitle}>🌀 측정 중...</ThemedText>
+        <ThemedText style={styles.measuringDescription}>편곤을 힘차게 휘둘러보세요!</ThemedText>
+      </View>
+
+      <View style={styles.liveDataBox}>
+        <View style={styles.liveDataRow}>
+          <ThemedText style={styles.liveDataLabel}>현재 에너지</ThemedText>
+          <ThemedText style={styles.liveDataValue}>{kineticEnergy.toFixed(3)} J</ThemedText>
+        </View>
+        <View style={styles.liveDataRow}>
+          <ThemedText style={styles.liveDataLabel}>최대 에너지</ThemedText>
+          <ThemedText style={styles.liveDataValueMax}>{maxEnergy.toFixed(3)} J</ThemedText>
+        </View>
+      </View>
+
+      <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement}>
+        <ThemedText style={styles.stopButtonText}>⏹️ 측정 완료</ThemedText>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const viewShotRef = useRef<ViewShot>(null);
+
+  const captureScreen = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('알림', '갤러리 접근 권한이 필요합니다.');
+        return;
+      }
+
+      if (viewShotRef.current?.capture) {
+        const uri = await viewShotRef.current.capture();
+        await MediaLibrary.saveToLibraryAsync(uri);
+        Alert.alert('완료!', '결과 화면이 갤러리에 저장되었어요!');
+      }
+    } catch (error) {
+      console.error('캡쳐 오류:', error);
+      Alert.alert('오류', '화면 캡쳐에 실패했어요.');
+    }
   };
 
-  const getRotationLevel = (value: number): string => {
-    if (value < 0.5) return "🎯 거의 안 돌아요";
-    if (value < 1.0) return "🔄 천천히 돌아요";
-    if (value < 2.0) return "🌀 빠르게 돌아요";
-    return "🌪️ 엄청 빠르게 돌아요!";
-  };
+  const renderResultScreen = () => (
+    <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
+      <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
+        <ThemedText style={styles.resultTitle}>🎉 측정 결과</ThemedText>
+
+        <View style={styles.resultMainCard}>
+          <ThemedText style={styles.resultEnergyValue}>{maxEnergy.toFixed(3)}</ThemedText>
+          <ThemedText style={styles.resultEnergyUnit}>줄 (J)</ThemedText>
+          <ThemedText style={styles.resultEnergyLevel}>{getEnergyLevel(maxEnergy)}</ThemedText>
+        </View>
+
+        <View style={styles.resultDetailsCard}>
+          <View style={styles.resultRow}>
+            <ThemedText style={styles.resultDetailLabel}>최대 회전속도</ThemedText>
+            <ThemedText style={styles.resultDetailValue}>{maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
+          </View>
+          <View style={styles.resultRow}>
+            <ThemedText style={styles.resultDetailLabel}>최대 가속도</ThemedText>
+            <ThemedText style={styles.resultDetailValue}>{maxAcceleration.toFixed(2)} m/s²</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.formulaCard}>
+          <ThemedText style={styles.formulaTitle}>💡 에너지 공식</ThemedText>
+          <ThemedText style={styles.formulaText}>E = ½ × 무게 × (회전속도 × 길이)²</ThemedText>
+        </View>
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.captureButton} onPress={captureScreen}>
+            <ThemedText style={styles.captureButtonText}>📷 캡쳐하기</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.retryButton} onPress={resetMeasurement}>
+            <ThemedText style={styles.retryButtonText}>🔄 다시 측정</ThemedText>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ViewShot>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.container}>
-        {/* 헤더 */}
-        <ThemedView style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ThemedText style={styles.backButtonText}>← 돌아가기</ThemedText>
-          </TouchableOpacity>
-          <ThemedText type="title" style={styles.title}>
-            🎮 움직임 측정기
-          </ThemedText>
-          <ThemedText style={styles.subtitle}>
-            📱 핸드폰을 움직여서 측정해보세요!
-          </ThemedText>
-        </ThemedView>
+      <ThemedView style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ThemedText style={styles.backButtonText}>← 돌아가기</ThemedText>
+        </TouchableOpacity>
+        <ThemedText style={styles.title}>편곤 에너지 측정기</ThemedText>
+      </ThemedView>
 
-        {/* 컨트롤 버튼 */}
-        <ThemedView style={styles.controlPanel}>
-          <TouchableOpacity
-            style={[
-              styles.button,
-              subscription ? styles.stopButton : styles.startButton,
-            ]}
-            onPress={subscription ? _unsubscribe : _subscribe}
-          >
-            <ThemedText style={styles.buttonText}>
-              {subscription ? "⏹️ 측정 멈추기" : "▶️ 측정 시작"}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              isRecording ? styles.recordingButton : styles.recordButton,
-            ]}
-            onPress={toggleRecording}
-            disabled={!subscription}
-          >
-            <ThemedText style={styles.buttonText}>
-              {isRecording ? "⏸️ 기록 멈추기" : "🔴 기록 시작"}
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.button, styles.resetButton]}
-            onPress={resetData}
-          >
-            <ThemedText style={styles.buttonText}>🔄 초기화</ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.button,
-              isCalibrated ? styles.calibratedButton : styles.calibrateButton,
-            ]}
-            onPress={calibrateGravity}
-          >
-            <ThemedText style={styles.buttonText}>
-              {isCalibrated ? "✅ 영점 완료" : "🎯 영점 맞추기"}
-            </ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
-
-        {/* 움직임 세기 표시 */}
-        <ThemedView style={styles.movementContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            📊 움직임 세기
-          </ThemedText>
-
-          <View style={styles.movementLevelBox}>
-            <ThemedText style={styles.movementLevelText}>
-              {getMovementLevel(magnitude)}
-            </ThemedText>
-            <ThemedText style={styles.movementValueSmall}>
-              {magnitude.toFixed(2)}
-            </ThemedText>
-          </View>
-
-          <View style={styles.dataRow}>
-            <ThemedText style={styles.dataLabel}>🏆 최고 기록:</ThemedText>
-            <ThemedText style={[styles.dataValue, styles.maxValue]}>
-              {maxAcceleration.toFixed(2)}
-            </ThemedText>
-          </View>
-
-          {isRecording && (
-            <View style={styles.dataRow}>
-              <ThemedText style={[styles.dataLabel, styles.recordingText]}>
-                🔴 기록 중... ({recordedData.length}개)
-              </ThemedText>
-            </View>
-          )}
-        </ThemedView>
-
-        {/* 회전 속도 표시 */}
-        <ThemedView style={styles.rotationContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            🔄 회전 속도
-          </ThemedText>
-
-          <View style={styles.movementLevelBox}>
-            <ThemedText style={styles.movementLevelText}>
-              {getRotationLevel(angularVelocity)}
-            </ThemedText>
-            <ThemedText style={styles.movementValueSmall}>
-              {angularVelocity.toFixed(2)}
-            </ThemedText>
-          </View>
-        </ThemedView>
-
-        {/* 운동에너지 표시 */}
-        <ThemedView style={styles.energyContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            ⚡ 움직임 힘 (에너지)
-          </ThemedText>
-
-          <View style={styles.movementLevelBox}>
-            <ThemedText style={styles.movementLevelText}>
-              {kineticEnergy < 0.01 ? "💤 거의 없어요" :
-               kineticEnergy < 0.1 ? "🔋 조금 있어요" :
-               kineticEnergy < 0.5 ? "⚡ 꽤 있어요!" :
-               kineticEnergy < 1.0 ? "💪 많이 있어요!" :
-               "🔥 엄청 많아요!!"}
-            </ThemedText>
-            <ThemedText style={styles.energyValue}>
-              {kineticEnergy.toFixed(3)}
-            </ThemedText>
-            <ThemedText style={styles.energyUnit}>줄 (J)</ThemedText>
-          </View>
-
-          <View style={styles.formulaBox}>
-            <ThemedText style={styles.formulaLabel}>💡 에너지 공식:</ThemedText>
-            <ThemedText style={styles.formulaText}>
-              움직임 힘 = ½ × 무게 × (회전속도 × 길이)²
-            </ThemedText>
-          </View>
-        </ThemedView>
-
-        {/* 실시간 그래프 */}
-        {graphData.length > 0 && (
-          <ThemedView style={styles.graphContainer}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>
-              📈 실시간 그래프
-            </ThemedText>
-            <LineChart
-              data={{
-                labels: graphData.map((_, index) =>
-                  index % 10 === 0 ? `${index}` : ""
-                ),
-                datasets: [
-                  {
-                    data: graphData,
-                    color: (opacity = 1) => `rgba(255, 159, 67, ${opacity})`,
-                    strokeWidth: 3,
-                  },
-                ],
-              }}
-              width={SCREEN_WIDTH - wp(15)}
-              height={200}
-              chartConfig={{
-                backgroundColor: "#FFF8E1",
-                backgroundGradientFrom: "#FFF8E1",
-                backgroundGradientTo: "#FFECB3",
-                decimalPlaces: 1,
-                color: (opacity = 1) => `rgba(255, 152, 0, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                style: {
-                  borderRadius: 16,
-                },
-                propsForDots: {
-                  r: "5",
-                  strokeWidth: "2",
-                  stroke: "#FF9800",
-                },
-              }}
-              bezier
-              style={styles.chart}
-            />
-          </ThemedView>
-        )}
-
-        {/* 상세 데이터 (숨김 가능) */}
-        <ThemedView style={styles.detailContainer}>
-          <ThemedText type="subtitle" style={styles.sectionTitle}>
-            🔬 자세한 정보
-          </ThemedText>
-          
-          <View style={styles.dataRow}>
-            <ThemedText style={styles.dataLabel}>↔️ 좌우 움직임:</ThemedText>
-            <ThemedText style={styles.dataValue}>
-              {correctedX.toFixed(2)}
-            </ThemedText>
-          </View>
-          
-          <View style={styles.dataRow}>
-            <ThemedText style={styles.dataLabel}>↕️ 위아래 움직임:</ThemedText>
-            <ThemedText style={styles.dataValue}>
-              {correctedY.toFixed(2)}
-            </ThemedText>
-          </View>
-          
-          <View style={styles.dataRow}>
-            <ThemedText style={styles.dataLabel}>🔄 앞뒤 움직임:</ThemedText>
-            <ThemedText style={styles.dataValue}>
-              {correctedZ.toFixed(2)}
-            </ThemedText>
-          </View>
-        </ThemedView>
-      </ScrollView>
+      {measurementState === 'ready' && renderReadyScreen()}
+      {measurementState === 'measuring' && renderMeasuringScreen()}
+      {measurementState === 'result' && renderResultScreen()}
     </SafeAreaView>
   );
 }
@@ -527,248 +314,306 @@ export default function ElementaryScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#FFF8E1",
-  },
-  container: {
-    flex: 1,
-    backgroundColor: "#FFF8E1",
-    paddingBottom: hp(2),
+    backgroundColor: CYBER_COLORS.background.primary,
   },
   header: {
-    padding: moderateScale(20),
-    alignItems: "center",
-    backgroundColor: "#FF9800",
-    marginBottom: moderateScale(12),
-    borderBottomLeftRadius: moderateScale(20),
-    borderBottomRightRadius: moderateScale(20),
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: CYBER_COLORS.background.secondary,
+    borderBottomWidth: 1,
+    borderBottomColor: CYBER_COLORS.neon.cyanDim,
   },
   backButton: {
-    position: "absolute",
-    left: moderateScale(12),
-    top: moderateScale(12),
-    padding: moderateScale(6),
-    backgroundColor: "rgba(255,255,255,0.3)",
-    borderRadius: moderateScale(10),
+    position: 'absolute',
+    left: wp(3),
+    paddingVertical: hp(0.5),
+    paddingHorizontal: wp(2),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyanDim,
   },
   backButtonText: {
-    color: "white",
-    fontSize: fontScale(14),
-    fontWeight: "bold",
+    color: CYBER_COLORS.neon.cyan,
+    fontSize: fontScale(12),
+    fontWeight: 'bold',
   },
   title: {
-    color: "white",
-    fontSize: fontScale(26),
-    fontWeight: "bold",
-    marginBottom: moderateScale(6),
-    marginTop: moderateScale(16),
+    color: CYBER_COLORS.text.primary,
+    fontSize: fontScale(18),
+    fontWeight: 'bold',
+    ...TEXT_GLOW.cyan,
   },
-  subtitle: {
-    color: "white",
-    fontSize: fontScale(15),
-    opacity: 0.95,
+  stateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(4),
   },
-  controlPanel: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    padding: moderateScale(10),
-    marginBottom: moderateScale(10),
-    marginHorizontal: wp(2),
-    gap: moderateScale(6),
+  readyBox: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: hp(3),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: CYBER_COLORS.neon.cyan,
+    ...NEON_GLOW.cyan,
+    marginBottom: hp(2),
   },
-  button: {
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(10),
-    borderRadius: moderateScale(12),
-    minWidth: wp(40),
-    marginVertical: moderateScale(4),
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+  readyTitle: {
+    fontSize: fontScale(22),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+    marginBottom: hp(1),
+    ...TEXT_GLOW.cyan,
   },
-  startButton: {
-    backgroundColor: "#4CAF50",
+  readyDescription: {
+    fontSize: fontScale(14),
+    color: CYBER_COLORS.text.secondary,
+    textAlign: 'center',
   },
-  stopButton: {
-    backgroundColor: "#F44336",
+  calibrationRequired: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: hp(2),
+    paddingHorizontal: wp(4),
+    backgroundColor: 'rgba(255, 184, 0, 0.15)',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: CYBER_COLORS.status.warning,
+    marginBottom: hp(2),
   },
-  recordButton: {
-    backgroundColor: "#2196F3",
-  },
-  recordingButton: {
-    backgroundColor: "#E91E63",
-  },
-  resetButton: {
-    backgroundColor: "#9E9E9E",
+  calibrationTitle: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.status.warning,
+    marginBottom: hp(1),
   },
   calibrateButton: {
-    backgroundColor: "#FF5722",
+    paddingVertical: hp(1.2),
+    paddingHorizontal: wp(5),
+    backgroundColor: 'rgba(255, 184, 0, 0.2)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.status.warning,
   },
-  calibratedButton: {
-    backgroundColor: "#4CAF50",
+  calibrateButtonText: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.status.warning,
   },
-  buttonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: fontScale(13),
+  startButton: {
+    paddingVertical: hp(1.8),
+    paddingHorizontal: wp(10),
+    ...CYBER_STYLES.successButton,
+    borderRadius: 14,
   },
-  movementContainer: {
-    marginHorizontal: wp(4),
-    marginVertical: moderateScale(8),
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    backgroundColor: "#FFECB3",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  rotationContainer: {
-    marginHorizontal: wp(4),
-    marginVertical: moderateScale(8),
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    backgroundColor: "#E3F2FD",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  movementLevelBox: {
-    backgroundColor: "white",
-    borderRadius: moderateScale(14),
-    padding: moderateScale(16),
-    alignItems: "center",
-    marginBottom: moderateScale(12),
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  movementLevelText: {
-    fontSize: fontScale(16),
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: moderateScale(6),
-    textAlign: "center",
-  },
-  movementValue: {
-    fontSize: fontScale(28),
-    fontWeight: "bold",
-    color: "#FF9800",
-  },
-  movementValueSmall: {
-    fontSize: fontScale(24),
-    fontWeight: "bold",
-    color: "#FF9800",
-  },
-  graphContainer: {
-    marginHorizontal: wp(4),
-    marginVertical: moderateScale(8),
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    backgroundColor: "white",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    alignItems: "center",
-  },
-  detailContainer: {
-    marginHorizontal: wp(4),
-    marginVertical: moderateScale(8),
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    backgroundColor: "#F3E5F5",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: moderateScale(24),
-  },
-  sectionTitle: {
+  startButtonText: {
     fontSize: fontScale(18),
-    fontWeight: "bold",
-    marginBottom: moderateScale(12),
-    color: "#333",
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
   },
-  dataRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: moderateScale(10),
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)",
+  measuringBox: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: hp(3),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: CYBER_COLORS.neon.magenta,
+    shadowColor: '#FF00FF',
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 10,
+    marginBottom: hp(2),
   },
-  dataLabel: {
-    fontSize: fontScale(15),
-    color: "#555",
-    fontWeight: "500",
+  measuringTitle: {
+    fontSize: fontScale(22),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.magenta,
+    marginBottom: hp(1),
+  },
+  measuringDescription: {
+    fontSize: fontScale(14),
+    color: CYBER_COLORS.text.secondary,
+    textAlign: 'center',
+  },
+  liveDataBox: {
+    width: '100%',
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyanDim,
+    marginBottom: hp(2),
+  },
+  liveDataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: hp(0.8),
+  },
+  liveDataLabel: {
+    fontSize: fontScale(13),
+    color: CYBER_COLORS.text.muted,
+  },
+  liveDataValue: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  liveDataValueMax: {
+    fontSize: fontScale(16),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    ...TEXT_GLOW.cyan,
+  },
+  stopButton: {
+    paddingVertical: hp(1.8),
+    paddingHorizontal: wp(10),
+    ...CYBER_STYLES.dangerButton,
+    borderRadius: 14,
+  },
+  stopButtonText: {
+    fontSize: fontScale(18),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  resultContainer: {
     flex: 1,
   },
-  dataValue: {
+  resultContent: {
+    paddingHorizontal: wp(4),
+    paddingTop: hp(2),
+    paddingBottom: hp(4),
+  },
+  resultTitle: {
+    fontSize: fontScale(22),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+    textAlign: 'center',
+    marginBottom: hp(2),
+    ...TEXT_GLOW.cyan,
+  },
+  resultMainCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: hp(22),
+    paddingVertical: hp(2),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: CYBER_COLORS.neon.cyan,
+    ...NEON_GLOW.cyan,
+    marginBottom: hp(2),
+  },
+  resultLabel: {
+    fontSize: fontScale(12),
+    color: CYBER_COLORS.text.muted,
+    marginBottom: hp(0.5),
+  },
+  resultEnergyValue: {
+    fontSize: fontScale(42),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    marginTop: hp(1),
+    lineHeight: fontScale(50),
+  },
+  resultEnergyUnit: {
+    fontSize: fontScale(14),
+    color: CYBER_COLORS.text.secondary,
+    marginBottom: hp(1),
+  },
+  resultEnergyLevel: {
     fontSize: fontScale(16),
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
   },
-  maxValue: {
-    color: "#F44336",
-    fontSize: fontScale(18),
+  resultDetailsCard: {
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyanDim,
+    marginBottom: hp(2),
   },
-  recordingText: {
-    color: "#E91E63",
-    fontWeight: "bold",
-    fontSize: fontScale(15),
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: hp(0.8),
+    borderBottomWidth: 1,
+    borderBottomColor: CYBER_COLORS.neon.cyanDim,
   },
-  chart: {
-    marginVertical: moderateScale(6),
-    borderRadius: moderateScale(14),
+  resultDetailLabel: {
+    fontSize: fontScale(13),
+    color: CYBER_COLORS.text.muted,
   },
-  energyContainer: {
-    marginHorizontal: wp(4),
-    marginVertical: moderateScale(8),
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    backgroundColor: "#E8F5E9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  resultDetailValue: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
   },
-  energyValue: {
-    fontSize: fontScale(24),
-    fontWeight: "bold",
-    color: "#4CAF50",
+  formulaCard: {
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(4),
+    backgroundColor: CYBER_COLORS.background.secondary,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyanDim,
+    marginBottom: hp(2),
+    alignItems: 'center',
   },
-  energyUnit: {
-    fontSize: fontScale(12),
-    color: "#666",
-    marginTop: moderateScale(3),
-  },
-  formulaBox: {
-    backgroundColor: "rgba(255,255,255,0.8)",
-    borderRadius: moderateScale(10),
-    padding: moderateScale(10),
-    marginTop: moderateScale(8),
-  },
-  formulaLabel: {
-    fontSize: fontScale(12),
-    fontWeight: "bold",
-    color: "#4CAF50",
-    marginBottom: moderateScale(3),
+  formulaTitle: {
+    fontSize: fontScale(13),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    marginBottom: hp(0.5),
   },
   formulaText: {
     fontSize: fontScale(12),
-    color: "#555",
-    textAlign: "center",
+    color: CYBER_COLORS.text.secondary,
+  },
+  retryButton: {
+    flex: 1,
+    paddingVertical: hp(1.5),
+    alignItems: 'center',
+    ...CYBER_STYLES.neonButton,
+    borderRadius: 14,
+  },
+  retryButtonText: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  viewShot: {
+    flex: 1,
+    backgroundColor: CYBER_COLORS.background.primary,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: wp(3),
+    marginTop: hp(1),
+  },
+  captureButton: {
+    flex: 1,
+    paddingVertical: hp(1.5),
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 184, 0, 0.2)',
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.status.warning,
+    borderRadius: 14,
+  },
+  captureButtonText: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.status.warning,
   },
 });
