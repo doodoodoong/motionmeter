@@ -33,7 +33,7 @@ export default function HomeScreen() {
             style={[styles.selectionButton, styles.elementaryButton]}
             onPress={() => router.push("/elementary")}
           >
-            <ThemedText style={styles.buttonTitle}>초등학생</ThemedText>
+            <ThemedText style={styles.buttonTitle}>초등,중학생</ThemedText>
             <ThemedText style={styles.buttonDescription}>
               쉽고 재미있게 움직임을 측정해요!
             </ThemedText>
@@ -43,7 +43,7 @@ export default function HomeScreen() {
             style={[styles.selectionButton, styles.secondaryButton]}
             onPress={() => router.push("/secondary")}
           >
-            <ThemedText style={styles.buttonTitle}>중·고등학생</ThemedText>
+            <ThemedText style={styles.buttonTitle}>고등학생,일반</ThemedText>
             <ThemedText style={styles.buttonDescription}>
               운동 에너지와 물리 공식을 배워요!
             </ThemedText>

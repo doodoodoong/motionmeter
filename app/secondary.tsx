@@ -1,5 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import { FLAIL_SPECS, FlailType } from "@/constants/flail-specs";
 import { CYBER_COLORS, CYBER_STYLES, NEON_GLOW, TEXT_GLOW } from "@/constants/theme";
 import { fontScale, hp, wp } from "@/utils/responsive";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -11,7 +12,6 @@ import {
   Alert,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,11 +24,25 @@ interface GravityOffset {
   z: number;
 }
 
-type MeasurementState = 'ready' | 'measuring' | 'result';
+interface MeasurementResult {
+  maxEnergy: number;
+  maxAngularVelocity: number;
+  maxAcceleration: number;
+  maxVTip: number;
+}
+
+type MeasurementState = 
+  | 'infantry_ready' 
+  | 'infantry_measuring' 
+  | 'infantry_result'
+  | 'cavalry_ready' 
+  | 'cavalry_measuring' 
+  | 'cavalry_result'
+  | 'final_result';
 
 export default function SecondaryScreen() {
   const router = useRouter();
-  const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
+  const [measurementState, setMeasurementState] = useState<MeasurementState>('infantry_ready');
   
   const [subscription, setSubscription] = useState<any>(null);
   const [gyroSubscription, setGyroSubscription] = useState<any>(null);
@@ -46,21 +60,18 @@ export default function SecondaryScreen() {
   const [angularVelocity, setAngularVelocity] = useState<number>(0);
   const [kineticEnergy, setKineticEnergy] = useState<number>(0);
 
-  const [mEff, setMEff] = useState<string>("0.5");
-  const [lTot, setLTot] = useState<string>("0.3");
+  // 각 편곤 측정 결과 저장
+  const [infantryResult, setInfantryResult] = useState<MeasurementResult | null>(null);
+  const [cavalryResult, setCavalryResult] = useState<MeasurementResult | null>(null);
+
+  // 현재 측정 중인 편곤 타입
+  const [currentFlailType, setCurrentFlailType] = useState<FlailType>('infantry');
 
   const gravityOffsetRef = useRef<GravityOffset>(gravityOffset);
-  const mEffRef = useRef<string>(mEff);
-  const lTotRef = useRef<string>(lTot);
 
   useEffect(() => {
     gravityOffsetRef.current = gravityOffset;
   }, [gravityOffset]);
-
-  useEffect(() => {
-    mEffRef.current = mEff;
-    lTotRef.current = lTot;
-  }, [mEff, lTot]);
 
   useEffect(() => {
     Accelerometer.setUpdateInterval(100);
@@ -85,18 +96,14 @@ export default function SecondaryScreen() {
     }
   };
 
-  const startMeasurement = useCallback(async () => {
+  const startMeasurement = useCallback(async (flailType: FlailType) => {
     if (!isCalibrated) {
       Alert.alert("알림", "먼저 중력 캘리브레이션을 완료해주세요!");
       return;
     }
 
-    const m = parseFloat(mEff) || 0;
-    const L = parseFloat(lTot) || 0;
-    if (m <= 0 || L <= 0) {
-      Alert.alert("알림", "유효 질량과 전체 길이를 입력해주세요!");
-      return;
-    }
+    const spec = FLAIL_SPECS[flailType];
+    setCurrentFlailType(flailType);
 
     try {
       setMaxAcceleration(0);
@@ -125,10 +132,8 @@ export default function SecondaryScreen() {
 
       const newGyroSubscription = Gyroscope.addListener((gyroscopeData) => {
         const omega = Math.sqrt(gyroscopeData.x ** 2 + gyroscopeData.y ** 2 + gyroscopeData.z ** 2);
-        const m = parseFloat(mEffRef.current) || 0;
-        const L = parseFloat(lTotRef.current) || 0;
-        const v_tip = omega * L;
-        const energy = (1 / 2) * m * v_tip * v_tip;
+        const v_tip = omega * spec.totalLength;
+        const energy = (1 / 2) * spec.mass * v_tip * v_tip;
         
         setAngularVelocity(omega);
         setKineticEnergy(energy);
@@ -139,11 +144,11 @@ export default function SecondaryScreen() {
       gyroSubscriptionRef.current = newGyroSubscription;
       setGyroSubscription(newGyroSubscription);
 
-      setMeasurementState('measuring');
+      setMeasurementState(flailType === 'infantry' ? 'infantry_measuring' : 'cavalry_measuring');
     } catch (error) {
       Alert.alert("오류", "센서를 시작하는 중 오류가 발생했습니다.");
     }
-  }, [isCalibrated, mEff, lTot]);
+  }, [isCalibrated]);
 
   const stopMeasurement = () => {
     if (subscriptionRef.current) {
@@ -156,15 +161,44 @@ export default function SecondaryScreen() {
       gyroSubscriptionRef.current = null;
       setGyroSubscription(null);
     }
-    setMeasurementState('result');
+
+    // 결과 저장
+    const result: MeasurementResult = {
+      maxEnergy,
+      maxAngularVelocity,
+      maxAcceleration,
+      maxVTip,
+    };
+
+    if (currentFlailType === 'infantry') {
+      setInfantryResult(result);
+      setMeasurementState('infantry_result');
+    } else {
+      setCavalryResult(result);
+      setMeasurementState('cavalry_result');
+    }
   };
 
-  const resetMeasurement = () => {
+  const proceedToCavalry = () => {
     setMaxAcceleration(0);
     setMaxAngularVelocity(0);
     setMaxEnergy(0);
     setMaxVTip(0);
-    setMeasurementState('ready');
+    setMeasurementState('cavalry_ready');
+  };
+
+  const showFinalResult = () => {
+    setMeasurementState('final_result');
+  };
+
+  const resetAll = () => {
+    setInfantryResult(null);
+    setCavalryResult(null);
+    setMaxAcceleration(0);
+    setMaxAngularVelocity(0);
+    setMaxEnergy(0);
+    setMaxVTip(0);
+    setMeasurementState('infantry_ready');
   };
 
   const calibrateGravity = async () => {
@@ -180,14 +214,18 @@ export default function SecondaryScreen() {
         {
           text: "시작",
           onPress: async () => {
+            let calibrationDone = false;
             const tempSubscription = Accelerometer.addListener((accelerometerData) => {
+              if (calibrationDone) return;
               setTimeout(() => {
+                if (calibrationDone) return;
+                calibrationDone = true;
+                tempSubscription.remove();
                 const offset = { x: accelerometerData.x, y: accelerometerData.y, z: accelerometerData.z };
                 setGravityOffset(offset);
                 setIsCalibrated(true);
                 AsyncStorage.setItem("gravityOffset", JSON.stringify(offset));
                 Alert.alert("완료", "중력 보정이 완료되었습니다.");
-                tempSubscription.remove();
               }, 3000);
             });
           },
@@ -198,98 +236,160 @@ export default function SecondaryScreen() {
     }
   };
 
-  const renderReadyScreen = () => (
-    <ScrollView style={styles.readyContainer} contentContainerStyle={styles.readyContent}>
-      <View style={styles.readyBox}>
-        <ThemedText style={styles.readyTitle}>⚡ 측정 준비</ThemedText>
-        <ThemedText style={styles.readyDescription}>
-          편곤의 물리적 특성을 입력하고 측정을 시작하세요
-        </ThemedText>
-      </View>
+  const renderReadyScreen = (flailType: FlailType) => {
+    const spec = FLAIL_SPECS[flailType];
+    const isInfantry = flailType === 'infantry';
+    
+    return (
+      <ScrollView style={styles.readyContainer} contentContainerStyle={styles.readyContent}>
+        <View style={[styles.readyBox, isInfantry ? styles.infantryBox : styles.cavalryBox]}>
+          <View style={styles.titleRow}>
+            <ThemedText style={styles.readyEmoji}>{isInfantry ? '🗡️' : '🐎'}</ThemedText>
+            <ThemedText style={styles.readyTitle}>{spec.name}</ThemedText>
+          </View>
+          <ThemedText style={styles.readyDescription}>
+            {isInfantry ? '1단계: 보병용 편곤 에너지 측정' : '2단계: 마상용 편곤 에너지 측정'}
+          </ThemedText>
+        </View>
 
-      <View style={styles.inputCard}>
-        <ThemedText style={styles.inputCardTitle}>📐 물리 변수 설정</ThemedText>
-        
-        <View style={styles.inputRow}>
-          <ThemedText style={styles.inputLabel}>유효 질량 (m_eff)</ThemedText>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={mEff}
-              onChangeText={setMEff}
-              placeholder="0.5"
-              keyboardType="decimal-pad"
-              placeholderTextColor={CYBER_COLORS.text.muted}
-            />
-            <ThemedText style={styles.inputUnit}>kg</ThemedText>
+        <View style={styles.specCard}>
+          <ThemedText style={styles.specCardTitle}>📐 {spec.name} 물리 특성</ThemedText>
+          
+          <View style={styles.specRow}>
+            <ThemedText style={styles.specLabel}>본체 길이</ThemedText>
+            <ThemedText style={styles.specValue}>{(spec.bodyLength * 100).toFixed(0)} cm</ThemedText>
+          </View>
+          <View style={styles.specRow}>
+            <ThemedText style={styles.specLabel}>보조체 길이</ThemedText>
+            <ThemedText style={styles.specValue}>{(spec.headLength * 100).toFixed(0)} cm</ThemedText>
+          </View>
+          <View style={styles.specRow}>
+            <ThemedText style={styles.specLabel}>연결부 길이</ThemedText>
+            <ThemedText style={styles.specValue}>{(spec.linkLength * 100).toFixed(1)} cm</ThemedText>
+          </View>
+          <View style={styles.specDivider} />
+          <View style={styles.specRow}>
+            <ThemedText style={styles.specLabel}>전체 길이 (L_tot)</ThemedText>
+            <ThemedText style={styles.specValueHighlight}>{(spec.totalLength * 100).toFixed(1)} cm</ThemedText>
+          </View>
+          <View style={styles.specRow}>
+            <ThemedText style={styles.specLabel}>총 질량 (m)</ThemedText>
+            <ThemedText style={styles.specValueHighlight}>{spec.mass} kg</ThemedText>
           </View>
         </View>
 
-        <View style={styles.inputRow}>
-          <ThemedText style={styles.inputLabel}>전체 길이 (L_tot)</ThemedText>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              value={lTot}
-              onChangeText={setLTot}
-              placeholder="0.3"
-              keyboardType="decimal-pad"
-              placeholderTextColor={CYBER_COLORS.text.muted}
-            />
-            <ThemedText style={styles.inputUnit}>m</ThemedText>
+        {!isCalibrated ? (
+          <View style={styles.calibrationRequired}>
+            <ThemedText style={styles.calibrationTitle}>⚠️ 중력 캘리브레이션이 필요합니다</ThemedText>
+            <TouchableOpacity style={styles.calibrateButton} onPress={calibrateGravity}>
+              <ThemedText style={styles.calibrateButtonText}>🎯 중력 캘리브레이션</ThemedText>
+            </TouchableOpacity>
           </View>
-        </View>
-      </View>
+        ) : (
+          <View style={styles.calibrationDone}>
+            <ThemedText style={styles.calibrationDoneText}>✅ 중력 보정 완료</ThemedText>
+          </View>
+        )}
 
-      {!isCalibrated ? (
-        <View style={styles.calibrationRequired}>
-          <ThemedText style={styles.calibrationTitle}>⚠️ 중력 캘리브레이션이 필요합니다</ThemedText>
-          <TouchableOpacity style={styles.calibrateButton} onPress={calibrateGravity}>
-            <ThemedText style={styles.calibrateButtonText}>🎯 중력 캘리브레이션</ThemedText>
+        {isCalibrated && (
+          <TouchableOpacity 
+            style={[styles.startButton, isInfantry ? styles.infantryButton : styles.cavalryButton]} 
+            onPress={() => startMeasurement(flailType)}
+          >
+            <ThemedText style={styles.startButtonText}>▶️ 측정 시작</ThemedText>
           </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.calibrationDone}>
-          <ThemedText style={styles.calibrationDoneText}>✅ 중력 보정 완료</ThemedText>
-        </View>
-      )}
+        )}
+      </ScrollView>
+    );
+  };
 
-      {isCalibrated && (
-        <TouchableOpacity style={styles.startButton} onPress={startMeasurement}>
-          <ThemedText style={styles.startButtonText}>▶️ 측정 시작</ThemedText>
+  const renderMeasuringScreen = (flailType: FlailType) => {
+    const spec = FLAIL_SPECS[flailType];
+    const isInfantry = flailType === 'infantry';
+
+    return (
+      <View style={styles.stateContainer}>
+        <View style={[styles.measuringBox, isInfantry ? styles.infantryMeasuring : styles.cavalryMeasuring]}>
+          <ThemedText style={styles.measuringTitle}>🌀 {spec.name} 측정 중...</ThemedText>
+          <ThemedText style={styles.measuringDescription}>편곤을 힘차게 휘둘러보세요!</ThemedText>
+        </View>
+
+        <View style={styles.liveDataBox}>
+          <View style={styles.liveDataRow}>
+            <ThemedText style={styles.liveDataLabel}>현재 각속도 (ω)</ThemedText>
+            <ThemedText style={styles.liveDataValue}>{angularVelocity.toFixed(4)} rad/s</ThemedText>
+          </View>
+          <View style={styles.liveDataRow}>
+            <ThemedText style={styles.liveDataLabel}>현재 에너지</ThemedText>
+            <ThemedText style={styles.liveDataValue}>{kineticEnergy.toFixed(4)} J</ThemedText>
+          </View>
+          <View style={styles.liveDataDivider} />
+          <View style={styles.liveDataRow}>
+            <ThemedText style={styles.liveDataLabel}>최대 에너지</ThemedText>
+            <ThemedText style={styles.liveDataValueMax}>{maxEnergy.toFixed(4)} J</ThemedText>
+          </View>
+        </View>
+
+        <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement}>
+          <ThemedText style={styles.stopButtonText}>⏹️ 측정 완료</ThemedText>
         </TouchableOpacity>
-      )}
-    </ScrollView>
-  );
-
-  const renderMeasuringScreen = () => (
-    <View style={styles.stateContainer}>
-      <View style={styles.measuringBox}>
-        <ThemedText style={styles.measuringTitle}>🌀 측정 중...</ThemedText>
-        <ThemedText style={styles.measuringDescription}>편곤을 힘차게 휘둘러보세요!</ThemedText>
       </View>
+    );
+  };
 
-      <View style={styles.liveDataBox}>
-        <View style={styles.liveDataRow}>
-          <ThemedText style={styles.liveDataLabel}>현재 각속도 (ω)</ThemedText>
-          <ThemedText style={styles.liveDataValue}>{angularVelocity.toFixed(4)} rad/s</ThemedText>
-        </View>
-        <View style={styles.liveDataRow}>
-          <ThemedText style={styles.liveDataLabel}>현재 에너지</ThemedText>
-          <ThemedText style={styles.liveDataValue}>{kineticEnergy.toFixed(4)} J</ThemedText>
-        </View>
-        <View style={styles.liveDataDivider} />
-        <View style={styles.liveDataRow}>
-          <ThemedText style={styles.liveDataLabel}>최대 에너지</ThemedText>
-          <ThemedText style={styles.liveDataValueMax}>{maxEnergy.toFixed(4)} J</ThemedText>
-        </View>
-      </View>
+  const renderResultScreen = (flailType: FlailType) => {
+    const spec = FLAIL_SPECS[flailType];
+    const isInfantry = flailType === 'infantry';
+    const result = isInfantry ? infantryResult : cavalryResult;
 
-      <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement}>
-        <ThemedText style={styles.stopButtonText}>⏹️ 측정 완료</ThemedText>
-      </TouchableOpacity>
-    </View>
-  );
+    if (!result) return null;
+
+    return (
+      <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
+        <ThemedText style={styles.resultTitle}>
+          {isInfantry ? '🗡️' : '🐎'} {spec.name} 결과
+        </ThemedText>
+
+        <View style={[styles.resultMainCard, isInfantry ? styles.infantryResultCard : styles.cavalryResultCard]}>
+          <ThemedText style={styles.resultEnergyValue}>{result.maxEnergy.toFixed(4)}</ThemedText>
+          <ThemedText style={styles.resultEnergyUnit}>J (줄)</ThemedText>
+        </View>
+
+        <View style={styles.resultDetailsCard}>
+          <ThemedText style={styles.resultSectionTitle}>측정값</ThemedText>
+          <View style={styles.resultRow}>
+            <ThemedText style={styles.resultDetailLabel}>최대 회전속도 (ω_max)</ThemedText>
+            <ThemedText style={styles.resultDetailValue}>{result.maxAngularVelocity.toFixed(4)} rad/s</ThemedText>
+          </View>
+          <View style={styles.resultRow}>
+            <ThemedText style={styles.resultDetailLabel}>최대 끝속도 (v_tip)</ThemedText>
+            <ThemedText style={styles.resultDetailValue}>{result.maxVTip.toFixed(4)} m/s</ThemedText>
+          </View>
+          <View style={styles.resultRow}>
+            <ThemedText style={styles.resultDetailLabel}>최대 가속도</ThemedText>
+            <ThemedText style={styles.resultDetailValue}>{result.maxAcceleration.toFixed(4)} m/s²</ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.formulaCard}>
+          <ThemedText style={styles.formulaTitle}>📐 에너지 계산</ThemedText>
+          <ThemedText style={styles.formulaText}>E = ½ × m × v²</ThemedText>
+          <ThemedText style={styles.formulaText}>E = ½ × {spec.mass} × ({result.maxVTip.toFixed(4)})²</ThemedText>
+          <ThemedText style={styles.formulaResult}>E = {result.maxEnergy.toFixed(4)} J</ThemedText>
+        </View>
+
+        {isInfantry ? (
+          <TouchableOpacity style={styles.nextButton} onPress={proceedToCavalry}>
+            <ThemedText style={styles.nextButtonText}>🐎 마상용 편곤 측정하기 →</ThemedText>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.finalButton} onPress={showFinalResult}>
+            <ThemedText style={styles.finalButtonText}>📊 최종 결과 보기</ThemedText>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    );
+  };
 
   const viewShotRef = useRef<ViewShot>(null);
 
@@ -312,62 +412,95 @@ export default function SecondaryScreen() {
     }
   };
 
-  const renderResultScreen = () => (
-    <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
-      <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
-        <ThemedText style={styles.resultTitle}>📊 측정 결과</ThemedText>
+  const renderFinalResultScreen = () => {
+    if (!infantryResult || !cavalryResult) return null;
 
-        <View style={styles.resultMainCard}>
-          <ThemedText style={styles.resultEnergyValue}>{maxEnergy.toFixed(4)}</ThemedText>
-          <ThemedText style={styles.resultEnergyUnit}>J (줄)</ThemedText>
-        </View>
+    const winner = infantryResult.maxEnergy >= cavalryResult.maxEnergy ? 'infantry' : 'cavalry';
+    const infantrySpec = FLAIL_SPECS.infantry;
+    const cavalrySpec = FLAIL_SPECS.cavalry;
 
-        <View style={styles.resultDetailsCard}>
-          <ThemedText style={styles.resultSectionTitle}>측정값</ThemedText>
-          <View style={styles.resultRow}>
-            <ThemedText style={styles.resultDetailLabel}>최대 회전속도</ThemedText>
-            <ThemedText style={styles.resultDetailValue}>{maxAngularVelocity.toFixed(4)} rad/s</ThemedText>
-          </View>
-          <View style={styles.resultRow}>
-            <ThemedText style={styles.resultDetailLabel}>최대 끝속도</ThemedText>
-            <ThemedText style={styles.resultDetailValue}>{maxVTip.toFixed(4)} m/s</ThemedText>
-          </View>
-          <View style={styles.resultRow}>
-            <ThemedText style={styles.resultDetailLabel}>최대 가속도</ThemedText>
-            <ThemedText style={styles.resultDetailValue}>{maxAcceleration.toFixed(4)} m/s²</ThemedText>
-          </View>
-        </View>
+    return (
+      <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
+        <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
+          <ThemedText style={styles.finalTitle}>📊 최종 측정 결과</ThemedText>
 
-        <View style={styles.resultDetailsCard}>
-          <ThemedText style={styles.resultSectionTitle}>입력값</ThemedText>
-          <View style={styles.resultRow}>
-            <ThemedText style={styles.resultDetailLabel}>유효 질량</ThemedText>
-            <ThemedText style={styles.resultDetailValue}>{mEff} kg</ThemedText>
+          {/* 보병용 편곤 결과 */}
+          <View style={[styles.comparisonCard, winner === 'infantry' && styles.winnerCard]}>
+            {winner === 'infantry' && <ThemedText style={styles.winnerBadge}>👑 최대 에너지</ThemedText>}
+            <View style={styles.comparisonHeader}>
+              <ThemedText style={styles.comparisonEmoji}>🗡️</ThemedText>
+              <ThemedText style={styles.comparisonTitle}>{infantrySpec.name}</ThemedText>
+            </View>
+            <ThemedText style={styles.comparisonEnergy}>{infantryResult.maxEnergy.toFixed(4)} J</ThemedText>
+            <View style={styles.comparisonDetails}>
+              <ThemedText style={styles.comparisonDetailText}>
+                ω = {infantryResult.maxAngularVelocity.toFixed(4)} rad/s
+              </ThemedText>
+              <ThemedText style={styles.comparisonDetailText}>
+                v = {infantryResult.maxVTip.toFixed(4)} m/s
+              </ThemedText>
+            </View>
+            <ThemedText style={styles.comparisonSpec}>
+              L = {(infantrySpec.totalLength * 100).toFixed(1)}cm | m = {infantrySpec.mass}kg
+            </ThemedText>
           </View>
-          <View style={styles.resultRow}>
-            <ThemedText style={styles.resultDetailLabel}>전체 길이</ThemedText>
-            <ThemedText style={styles.resultDetailValue}>{lTot} m</ThemedText>
+
+          {/* 마상용 편곤 결과 */}
+          <View style={[styles.comparisonCard, winner === 'cavalry' && styles.winnerCard]}>
+            {winner === 'cavalry' && <ThemedText style={styles.winnerBadge}>👑 최대 에너지</ThemedText>}
+            <View style={styles.comparisonHeader}>
+              <ThemedText style={styles.comparisonEmoji}>🐎</ThemedText>
+              <ThemedText style={styles.comparisonTitle}>{cavalrySpec.name}</ThemedText>
+            </View>
+            <ThemedText style={styles.comparisonEnergy}>{cavalryResult.maxEnergy.toFixed(4)} J</ThemedText>
+            <View style={styles.comparisonDetails}>
+              <ThemedText style={styles.comparisonDetailText}>
+                ω = {cavalryResult.maxAngularVelocity.toFixed(4)} rad/s
+              </ThemedText>
+              <ThemedText style={styles.comparisonDetailText}>
+                v = {cavalryResult.maxVTip.toFixed(4)} m/s
+              </ThemedText>
+            </View>
+            <ThemedText style={styles.comparisonSpec}>
+              L = {(cavalrySpec.totalLength * 100).toFixed(1)}cm | m = {cavalrySpec.mass}kg
+            </ThemedText>
           </View>
-        </View>
 
-        <View style={styles.formulaCard}>
-          <ThemedText style={styles.formulaTitle}>📐 에너지 계산식</ThemedText>
-          <ThemedText style={styles.formulaText}>에너지 = ½ × 질량 × (회전속도 × 길이)²</ThemedText>
-          <ThemedText style={styles.formulaText}>에너지 = ½ × {mEff} × ({maxAngularVelocity.toFixed(2)} × {lTot})²</ThemedText>
-          <ThemedText style={styles.formulaResult}>에너지 = {maxEnergy.toFixed(4)} J</ThemedText>
-        </View>
+          {/* 에너지 차이 분석 */}
+          <View style={styles.analysisCard}>
+            <ThemedText style={styles.analysisTitle}>⚡ 에너지 분석</ThemedText>
+            <View style={styles.analysisRow}>
+              <ThemedText style={styles.analysisLabel}>에너지 차이</ThemedText>
+              <ThemedText style={styles.analysisValue}>
+                {Math.abs(infantryResult.maxEnergy - cavalryResult.maxEnergy).toFixed(4)} J
+              </ThemedText>
+            </View>
+            <View style={styles.analysisRow}>
+              <ThemedText style={styles.analysisLabel}>에너지 비율</ThemedText>
+              <ThemedText style={styles.analysisValue}>
+                {(infantryResult.maxEnergy / cavalryResult.maxEnergy).toFixed(2)} : 1
+              </ThemedText>
+            </View>
+          </View>
 
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.captureButton} onPress={captureScreen}>
-            <ThemedText style={styles.captureButtonText}>📷 캡쳐하기</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.retryButton} onPress={resetMeasurement}>
-            <ThemedText style={styles.retryButtonText}>🔄 다시 측정</ThemedText>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </ViewShot>
-  );
+          <View style={styles.formulaCard}>
+            <ThemedText style={styles.formulaTitle}>📐 운동 에너지 공식</ThemedText>
+            <ThemedText style={styles.formulaText}>E = ½ × m × v²</ThemedText>
+            <ThemedText style={styles.formulaText}>v = ω × L (끝속도 = 각속도 × 길이)</ThemedText>
+          </View>
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.captureButton} onPress={captureScreen}>
+              <ThemedText style={styles.captureButtonText}>📷 캡쳐하기</ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryButton} onPress={resetAll}>
+              <ThemedText style={styles.retryButtonText}>🔄 처음부터</ThemedText>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </ViewShot>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -378,9 +511,13 @@ export default function SecondaryScreen() {
         <ThemedText style={styles.title}>편곤 에너지 측정기</ThemedText>
       </ThemedView>
 
-      {measurementState === 'ready' && renderReadyScreen()}
-      {measurementState === 'measuring' && renderMeasuringScreen()}
-      {measurementState === 'result' && renderResultScreen()}
+      {measurementState === 'infantry_ready' && renderReadyScreen('infantry')}
+      {measurementState === 'infantry_measuring' && renderMeasuringScreen('infantry')}
+      {measurementState === 'infantry_result' && renderResultScreen('infantry')}
+      {measurementState === 'cavalry_ready' && renderReadyScreen('cavalry')}
+      {measurementState === 'cavalry_measuring' && renderMeasuringScreen('cavalry')}
+      {measurementState === 'cavalry_result' && renderResultScreen('cavalry')}
+      {measurementState === 'final_result' && renderFinalResultScreen()}
     </SafeAreaView>
   );
 }
@@ -442,9 +579,27 @@ const styles = StyleSheet.create({
     backgroundColor: CYBER_COLORS.background.card,
     borderRadius: 16,
     borderWidth: 2,
+    marginBottom: hp(2),
+  },
+  infantryBox: {
     borderColor: CYBER_COLORS.neon.cyan,
     ...NEON_GLOW.cyan,
-    marginBottom: hp(2),
+  },
+  cavalryBox: {
+    borderColor: CYBER_COLORS.neon.magenta,
+    shadowColor: '#FF00FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(0.5),
+  },
+  readyEmoji: {
+    fontSize: fontScale(24),
+    marginRight: wp(2),
   },
   readyTitle: {
     fontSize: fontScale(20),
@@ -458,7 +613,7 @@ const styles = StyleSheet.create({
     color: CYBER_COLORS.text.secondary,
     textAlign: 'center',
   },
-  inputCard: {
+  specCard: {
     paddingVertical: hp(1.5),
     paddingHorizontal: wp(4),
     backgroundColor: CYBER_COLORS.background.card,
@@ -467,44 +622,36 @@ const styles = StyleSheet.create({
     borderColor: CYBER_COLORS.neon.cyanDim,
     marginBottom: hp(2),
   },
-  inputCardTitle: {
+  specCardTitle: {
     fontSize: fontScale(14),
     fontWeight: 'bold',
     color: CYBER_COLORS.neon.cyan,
     marginBottom: hp(1.5),
   },
-  inputRow: {
+  specRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: hp(1),
+    marginBottom: hp(0.8),
   },
-  inputLabel: {
+  specLabel: {
     fontSize: fontScale(12),
     color: CYBER_COLORS.text.muted,
-    flex: 1,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  input: {
-    width: wp(18),
-    paddingHorizontal: wp(2),
-    paddingVertical: hp(0.8),
-    backgroundColor: 'rgba(0, 240, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: CYBER_COLORS.neon.cyanDim,
-    borderRadius: 8,
-    color: CYBER_COLORS.text.primary,
+  specValue: {
     fontSize: fontScale(13),
-    textAlign: 'center',
+    color: CYBER_COLORS.text.primary,
   },
-  inputUnit: {
-    fontSize: fontScale(12),
-    color: CYBER_COLORS.text.muted,
-    marginLeft: wp(2),
-    width: wp(8),
+  specValueHighlight: {
+    fontSize: fontScale(14),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    ...TEXT_GLOW.cyan,
+  },
+  specDivider: {
+    height: 1,
+    backgroundColor: CYBER_COLORS.neon.cyanDim,
+    marginVertical: hp(1),
   },
   calibrationRequired: {
     alignItems: 'center',
@@ -554,8 +701,19 @@ const styles = StyleSheet.create({
   startButton: {
     paddingVertical: hp(1.5),
     alignItems: 'center',
-    ...CYBER_STYLES.successButton,
     borderRadius: 14,
+    borderWidth: 2,
+  },
+  infantryButton: {
+    ...CYBER_STYLES.successButton,
+  },
+  cavalryButton: {
+    backgroundColor: 'rgba(255, 0, 255, 0.2)',
+    borderColor: CYBER_COLORS.neon.magenta,
+    shadowColor: '#FF00FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
   },
   startButtonText: {
     fontSize: fontScale(16),
@@ -570,17 +728,23 @@ const styles = StyleSheet.create({
     backgroundColor: CYBER_COLORS.background.card,
     borderRadius: 16,
     borderWidth: 2,
+    marginBottom: hp(2),
+  },
+  infantryMeasuring: {
+    borderColor: CYBER_COLORS.neon.cyan,
+    ...NEON_GLOW.cyan,
+  },
+  cavalryMeasuring: {
     borderColor: CYBER_COLORS.neon.magenta,
     shadowColor: '#FF00FF',
     shadowOpacity: 0.8,
     shadowRadius: 15,
     elevation: 10,
-    marginBottom: hp(2),
   },
   measuringTitle: {
-    fontSize: fontScale(22),
+    fontSize: fontScale(20),
     fontWeight: 'bold',
-    color: CYBER_COLORS.neon.magenta,
+    color: CYBER_COLORS.text.primary,
     marginBottom: hp(1),
   },
   measuringDescription: {
@@ -653,27 +817,31 @@ const styles = StyleSheet.create({
   resultMainCard: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: hp(20),
+    minHeight: hp(18),
     paddingVertical: hp(2),
     paddingHorizontal: wp(4),
     backgroundColor: CYBER_COLORS.background.card,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: CYBER_COLORS.neon.cyan,
-    ...NEON_GLOW.cyan,
     marginBottom: hp(1.5),
   },
-  resultLabel: {
-    fontSize: fontScale(12),
-    color: CYBER_COLORS.text.muted,
-    marginBottom: hp(0.3),
+  infantryResultCard: {
+    borderColor: CYBER_COLORS.neon.cyan,
+    ...NEON_GLOW.cyan,
+  },
+  cavalryResultCard: {
+    borderColor: CYBER_COLORS.neon.magenta,
+    shadowColor: '#FF00FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
   },
   resultEnergyValue: {
-    fontSize: fontScale(38),
+    fontSize: fontScale(36),
     fontWeight: 'bold',
     color: CYBER_COLORS.neon.cyan,
     marginTop: hp(1),
-    lineHeight: fontScale(46),
+    lineHeight: fontScale(44),
   },
   resultEnergyUnit: {
     fontSize: fontScale(13),
@@ -736,6 +904,141 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: CYBER_COLORS.neon.cyan,
     marginTop: hp(0.5),
+    ...TEXT_GLOW.cyan,
+  },
+  nextButton: {
+    paddingVertical: hp(1.5),
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 0, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: CYBER_COLORS.neon.magenta,
+    borderRadius: 14,
+    shadowColor: '#FF00FF',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  nextButtonText: {
+    fontSize: fontScale(15),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  finalButton: {
+    paddingVertical: hp(1.5),
+    alignItems: 'center',
+    ...CYBER_STYLES.successButton,
+    borderRadius: 14,
+  },
+  finalButtonText: {
+    fontSize: fontScale(15),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  finalTitle: {
+    fontSize: fontScale(22),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+    textAlign: 'center',
+    marginBottom: hp(2),
+    ...TEXT_GLOW.cyan,
+  },
+  comparisonCard: {
+    padding: wp(4),
+    backgroundColor: CYBER_COLORS.background.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyanDim,
+    marginBottom: hp(1.5),
+    position: 'relative',
+  },
+  winnerCard: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  winnerBadge: {
+    position: 'absolute',
+    top: -hp(1.2),
+    right: wp(3),
+    backgroundColor: '#FFD700',
+    paddingVertical: hp(0.3),
+    paddingHorizontal: wp(2),
+    borderRadius: 6,
+    fontSize: fontScale(10),
+    fontWeight: 'bold',
+    color: '#000',
+    overflow: 'hidden',
+  },
+  comparisonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(0.8),
+  },
+  comparisonEmoji: {
+    fontSize: fontScale(22),
+    marginRight: wp(2),
+  },
+  comparisonTitle: {
+    fontSize: fontScale(15),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.text.primary,
+  },
+  comparisonEnergy: {
+    fontSize: fontScale(28),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    textAlign: 'center',
+    paddingVertical: hp(1),
+    ...TEXT_GLOW.cyan,
+  },
+  comparisonDetails: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: wp(4),
+    marginTop: hp(0.5),
+  },
+  comparisonDetailText: {
+    fontSize: fontScale(10),
+    color: CYBER_COLORS.text.muted,
+  },
+  comparisonSpec: {
+    fontSize: fontScale(10),
+    color: CYBER_COLORS.text.muted,
+    textAlign: 'center',
+    marginTop: hp(0.5),
+  },
+  analysisCard: {
+    paddingVertical: hp(1.2),
+    paddingHorizontal: wp(4),
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: CYBER_COLORS.neon.cyan,
+    marginBottom: hp(1.5),
+  },
+  analysisTitle: {
+    fontSize: fontScale(13),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
+    marginBottom: hp(1),
+    textAlign: 'center',
+  },
+  analysisRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: hp(0.5),
+  },
+  analysisLabel: {
+    fontSize: fontScale(12),
+    color: CYBER_COLORS.text.muted,
+  },
+  analysisValue: {
+    fontSize: fontScale(13),
+    fontWeight: 'bold',
+    color: CYBER_COLORS.neon.cyan,
     ...TEXT_GLOW.cyan,
   },
   retryButton: {
