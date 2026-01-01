@@ -2,6 +2,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { FLAIL_SPECS, FlailType } from "@/constants/flail-specs";
 import { secondaryStyles as styles } from "@/styles/secondary.styles";
+import { uploadMeasurementResult } from "@/utils/firebase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as MediaLibrary from "expo-media-library";
 import { useRouter } from "expo-router";
@@ -148,7 +149,7 @@ export default function SecondaryScreen() {
     }
   }, [isCalibrated]);
 
-  const stopMeasurement = () => {
+  const stopMeasurement = async () => {
     if (subscriptionRef.current) {
       subscriptionRef.current.remove();
       subscriptionRef.current = null;
@@ -167,6 +168,16 @@ export default function SecondaryScreen() {
       maxAcceleration,
       maxVTip,
     };
+
+    // Firebase에 자동 업로드
+    const uploadSuccess = await uploadMeasurementResult('secondary', currentFlailType, {
+      maxEnergy,
+      maxAngularVelocity,
+    });
+    
+    if (uploadSuccess) {
+      console.log('고등일반용 측정 결과 Firebase 업로드 완료');
+    }
 
     if (currentFlailType === 'infantry') {
       setInfantryResult(result);
