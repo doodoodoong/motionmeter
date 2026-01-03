@@ -63,7 +63,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   titleRow: {
     flexDirection: 'row',
@@ -142,7 +141,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   startButtonText: {
     fontSize: fontScale(18),
@@ -168,7 +166,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.8,
     shadowRadius: 15,
-    elevation: 10,
   },
   measuringTitle: {
     fontSize: fontScale(20),
@@ -258,7 +255,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   resultEnergyValue: {
     fontSize: fontScale(42),
@@ -312,7 +308,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   nextButtonText: {
     fontSize: fontScale(16),
@@ -353,7 +348,6 @@ export const elementaryStyles = StyleSheet.create({
     shadowColor: '#FFD700',
     shadowOpacity: 0.6,
     shadowRadius: 10,
-    elevation: 10,
   },
   winnerBadge: {
     position: 'absolute',

@@ -9,10 +9,10 @@ import { useRouter } from "expo-router";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  ScrollView,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
@@ -382,9 +382,9 @@ export default function SecondaryScreen() {
 
         <View style={styles.formulaCard}>
           <ThemedText style={styles.formulaTitle}>📐 에너지 계산</ThemedText>
-          <ThemedText style={styles.formulaText}>E = ½ × m × v²</ThemedText>
-          <ThemedText style={styles.formulaText}>E = ½ × {spec.mass} × ({result.maxVTip.toFixed(4)})²</ThemedText>
-          <ThemedText style={styles.formulaResult}>E = {result.maxEnergy.toFixed(4)} J</ThemedText>
+          <ThemedText style={styles.formulaText}>운동에너지 = 0.5 × 무게 × (속도)²</ThemedText>
+          <ThemedText style={styles.formulaText}>운동에너지 = 0.5 × {spec.mass} × ({result.maxVTip.toFixed(4)})²</ThemedText>
+          <ThemedText style={styles.formulaResult}>결과 = {result.maxEnergy.toFixed(4)} J</ThemedText>
         </View>
 
         {isInfantry ? (
@@ -494,8 +494,8 @@ export default function SecondaryScreen() {
 
           <View style={styles.formulaCard}>
             <ThemedText style={styles.formulaTitle}>📐 운동 에너지 공식</ThemedText>
-            <ThemedText style={styles.formulaText}>E = ½ × m × v²</ThemedText>
-            <ThemedText style={styles.formulaText}>v = ω × L (끝속도 = 각속도 × 길이)</ThemedText>
+            <ThemedText style={styles.formulaText}>운동에너지 = 0.5 × 무게 × (속도)²</ThemedText>
+            <ThemedText style={styles.formulaText}>속도 = 회전속도 × 길이</ThemedText>
           </View>
 
           <View style={styles.buttonRow}>

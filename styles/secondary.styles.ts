@@ -70,7 +70,6 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   titleRow: {
     flexDirection: 'row',
@@ -193,7 +192,6 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   startButtonText: {
     fontSize: fontScale(16),
@@ -219,7 +217,7 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.8,
     shadowRadius: 15,
-    elevation: 10,
+
   },
   measuringTitle: {
     fontSize: fontScale(20),
@@ -314,7 +312,7 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
+
   },
   resultEnergyValue: {
     fontSize: fontScale(36),
@@ -396,7 +394,6 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FF00FF',
     shadowOpacity: 0.6,
     shadowRadius: 12,
-    elevation: 10,
   },
   nextButtonText: {
     fontSize: fontScale(15),
@@ -437,7 +434,7 @@ export const secondaryStyles = StyleSheet.create({
     shadowColor: '#FFD700',
     shadowOpacity: 0.6,
     shadowRadius: 10,
-    elevation: 10,
+
   },
   winnerBadge: {
     position: 'absolute',

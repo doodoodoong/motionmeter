@@ -99,21 +99,18 @@ export const NEON_GLOW = {
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 10,
-    elevation: 10,
   },
   magenta: {
     shadowColor: '#FF00FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 10,
-    elevation: 10,
   },
   subtle: {
     shadowColor: '#00F0FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 15,
-    elevation: 5,
   },
 };
 
@@ -170,7 +167,6 @@ export const CYBER_STYLES = {
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 8,
   },
   
   // 성공 버튼
@@ -183,7 +179,6 @@ export const CYBER_STYLES = {
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 8,
   },
   
   // 입력 필드
