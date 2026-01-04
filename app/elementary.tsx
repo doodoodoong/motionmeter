@@ -9,10 +9,10 @@ import { useRouter } from "expo-router";
 import { Accelerometer, Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  ScrollView,
-  TouchableOpacity,
-  View,
+    Alert,
+    ScrollView,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
@@ -364,20 +364,29 @@ export default function ElementaryScreen() {
 
   const captureScreen = async () => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('알림', '갤러리 접근 권한이 필요합니다.');
-        return;
-      }
-
       if (viewShotRef.current?.capture) {
         const uri = await viewShotRef.current.capture();
-        await MediaLibrary.saveToLibraryAsync(uri);
-        Alert.alert('완료!', '결과 화면이 갤러리에 저장되었어요!');
+        
+        try {
+          await MediaLibrary.saveToLibraryAsync(uri);
+          Alert.alert('완료!', '결과 화면이 갤러리에 저장되었어요!');
+        } catch (saveError) {
+          // 권한 문제로 실패했을 경우 (Android 10 미만 등)
+          const { status } = await MediaLibrary.getPermissionsAsync();
+          if (status !== 'granted') {
+             const { status: newStatus } = await MediaLibrary.requestPermissionsAsync();
+             if (newStatus === 'granted') {
+                await MediaLibrary.saveToLibraryAsync(uri);
+                Alert.alert('완료!', '결과 화면이 갤러리에 저장되었어요!');
+                return;
+             }
+          }
+          throw saveError;
+        }
       }
     } catch (error) {
       console.error('캡쳐 오류:', error);
-      Alert.alert('오류', '화면 캡쳐에 실패했어요.');
+      Alert.alert('오류', '화면 캡쳐에 실패했어요. 갤러리 권한을 확인해주세요.');
     }
   };
 
