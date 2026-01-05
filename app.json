@@ -2,7 +2,7 @@
   "expo": {
     "name": "편곤에너지 측정기",
     "slug": "motionmeter",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "motionmeter",
@@ -12,6 +12,7 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 3,
       "package": "com.doodoodoong.motionmeter",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
