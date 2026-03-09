@@ -1,4 +1,4 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -14,27 +14,20 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <GluestackUIProvider mode="dark">
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <GluestackUIProvider mode="light">
+        <ThemeProvider value={DefaultTheme}>
           <Stack>
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen 
-              name="elementary" 
+              name="measure" 
               options={{ 
                 headerShown: false,
-                title: '초등학생용',
-              }} 
-            />
-            <Stack.Screen 
-              name="secondary" 
-              options={{ 
-                headerShown: false,
-                title: '중고등학생용',
+                title: '측정',
               }} 
             />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
           </Stack>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
         </ThemeProvider>
       </GluestackUIProvider>
     </SafeAreaProvider>

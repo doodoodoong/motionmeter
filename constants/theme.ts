@@ -53,158 +53,66 @@ export const Fonts = Platform.select({
 });
 
 /**
- * 사이버조선 (Cyber-Joseon) 테마
- * 전통 조선시대 미학과 미래지향적 사이버펑크 요소의 융합
+ * 심플 라이트 테마
  */
-
-// 사이버조선 색상 팔레트
-export const CYBER_COLORS = {
-  // 배경색
+export const SIMPLE_COLORS = {
   background: {
-    primary: '#050505',      // 매우 어두운 검정
-    secondary: '#0A0A12',    // 어두운 남색
-    card: 'rgba(10, 10, 18, 0.85)',  // 반투명 카드 배경
-    overlay: 'rgba(5, 5, 5, 0.7)',   // 오버레이
+    primary: '#F8F9FA',      // 옅은 회색 배경
+    secondary: '#FFFFFF',    // 흰색 패널/카드
+    card: '#FFFFFF',
+    overlay: 'rgba(0, 0, 0, 0.4)',
   },
   
-  // 네온 포인트 컬러
-  neon: {
-    cyan: '#00F0FF',         // 네온 시안 - 메인 포인트
-    cyanDim: 'rgba(0, 240, 255, 0.3)',  // 흐린 시안
-    magenta: '#FF00FF',      // 네온 마젠타 - 강조
-    blue: '#0077FF',         // 네온 블루
-    green: '#00FF88',        // 네온 그린
-  },
+  primary: '#007AFF', // 메인 브랜드 컬러 (iOS 기본 블루)
   
-  // 텍스트 색상
   text: {
-    primary: '#FFFFFF',      // 흰색
-    secondary: '#00D4E6',    // 밝은 시안
-    muted: 'rgba(255, 255, 255, 0.6)',  // 흐린 흰색
+    primary: '#1C1C1E',      // 강한 검정
+    secondary: '#3A3A3C',    // 중간 텍스트
+    muted: '#8E8E93',        // 아주 옅은 보조 텍스트
   },
   
-  // 상태 색상
-  status: {
-    success: '#00FF88',
-    warning: '#FFB800',
-    error: '#FF3366',
-    info: '#00F0FF',
+  border: {
+    light: '#E5E5EA',
+    medium: '#C7C7CC',
   },
+  
+  gauge: {
+    flail: '#5AC8FA',   // 시안 계열의 파랑
+    staff: '#4CD964',   // 밝은 초록
+    mace:  '#FF9500',   // 오렌지
+    track: '#EFEFEF',   // 게이지 배경 회색
+  }
 };
 
-// 네온 글로우 효과 스타일
-export const NEON_GLOW = {
-  cyan: {
-    shadowColor: '#00F0FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-  },
-  magenta: {
-    shadowColor: '#FF00FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-  },
-  subtle: {
-    shadowColor: '#00F0FF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-  },
-};
-
-// 텍스트 글로우 효과
-export const TEXT_GLOW = {
-  cyan: {
-    textShadowColor: '#00F0FF',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  strong: {
-    textShadowColor: '#00F0FF',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
-  },
-};
-
-// 공통 컴포넌트 스타일
-export const CYBER_STYLES = {
-  // 네온 테두리 카드
-  neonCard: {
-    backgroundColor: CYBER_COLORS.background.card,
-    borderWidth: 1,
-    borderColor: CYBER_COLORS.neon.cyanDim,
-    borderRadius: 12,
-    ...NEON_GLOW.subtle,
-  },
-  
-  // 네온 버튼
-  neonButton: {
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: CYBER_COLORS.neon.cyan,
-    borderRadius: 8,
-    ...NEON_GLOW.cyan,
-  },
-  
-  // 액티브 버튼
-  activeButton: {
-    backgroundColor: 'rgba(0, 240, 255, 0.2)',
-    borderWidth: 2,
-    borderColor: CYBER_COLORS.neon.cyan,
-    borderRadius: 8,
-    ...NEON_GLOW.cyan,
-  },
-  
-  // 위험 버튼 (정지, 삭제 등)
-  dangerButton: {
-    backgroundColor: 'rgba(255, 51, 102, 0.1)',
-    borderWidth: 1,
-    borderColor: '#FF3366',
-    borderRadius: 8,
-    shadowColor: '#FF3366',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-  },
-  
-  // 성공 버튼
-  successButton: {
-    backgroundColor: 'rgba(0, 255, 136, 0.1)',
-    borderWidth: 1,
-    borderColor: '#00FF88',
-    borderRadius: 8,
-    shadowColor: '#00FF88',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-  },
-  
-  // 입력 필드
-  input: {
-    backgroundColor: 'rgba(0, 240, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: CYBER_COLORS.neon.cyanDim,
-    borderRadius: 8,
-    color: CYBER_COLORS.text.primary,
-  },
-};
-
-// 그래프 차트 설정
-export const CYBER_CHART_CONFIG = {
-  backgroundColor: CYBER_COLORS.background.secondary,
-  backgroundGradientFrom: CYBER_COLORS.background.secondary,
-  backgroundGradientTo: CYBER_COLORS.background.primary,
-  decimalPlaces: 2,
-  color: (opacity = 1) => `rgba(0, 240, 255, ${opacity})`,
-  labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-  style: {
+export const SIMPLE_STYLES = {
+  card: {
+    backgroundColor: SIMPLE_COLORS.background.card,
     borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  propsForDots: {
-    r: '4',
-    strokeWidth: '2',
-    stroke: CYBER_COLORS.neon.cyan,
+  button: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: SIMPLE_COLORS.border.medium,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
+  primaryButton: {
+    backgroundColor: SIMPLE_COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    alignItems: 'center' as const,
+  }
 };

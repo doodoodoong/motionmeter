@@ -30,21 +30,11 @@ export default function HomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={[styles.selectionButton, styles.elementaryButton]}
-            onPress={() => router.push("/elementary")}
+            onPress={() => router.push("/measure" as any)}
           >
-            <ThemedText style={styles.buttonTitle}>초등,중학생</ThemedText>
+            <ThemedText style={styles.buttonTitle}>측정 시작하기</ThemedText>
             <ThemedText style={styles.buttonDescription}>
-              쉽고 재미있게 움직임을 측정해요!
-            </ThemedText>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.selectionButton, styles.secondaryButton]}
-            onPress={() => router.push("/secondary")}
-          >
-            <ThemedText style={styles.buttonTitle}>고등학생,일반</ThemedText>
-            <ThemedText style={styles.buttonDescription}>
-              운동 에너지와 물리 공식을 배워요!
+              스마트폰을 휘둘러 편곤, 봉, 철퇴의 에너지를 한 번에 잽니다!
             </ThemedText>
           </TouchableOpacity>
         </View>
