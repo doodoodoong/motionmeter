@@ -19,10 +19,10 @@ export default function HomeScreen() {
         {/* 헤더 */}
         <ThemedView style={styles.header}>
           <ThemedText type="title" style={styles.title}>
-            편곤 에너지 측정기
+            전통무기 에너지 측정기
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            움직임과 에너지를 측정해보세요!
+            스마트폰으로 전통무기 에너지를 측정해보세요!
           </ThemedText>
         </ThemedView>
 

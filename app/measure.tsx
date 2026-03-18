@@ -7,16 +7,17 @@ import { useRouter } from "expo-router";
 import { Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    ScrollView,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  ScrollView,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
+import { Video, ResizeMode } from "expo-av";
 
-type MeasurementState = 'ready' | 'measuring' | 'result';
+type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 
 export default function MeasureScreen() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function MeasureScreen() {
       setGyroSubscription(null);
     }
 
-    setMeasurementState('result');
+    setMeasurementState('splash');
   };
 
   const resetAll = () => {
@@ -113,11 +114,11 @@ export default function MeasureScreen() {
 
         <View style={styles.liveDataBox}>
           <View style={styles.liveDataRow}>
-            <ThemedText style={styles.liveDataLabel}>현재 각속도</ThemedText>
+            <ThemedText style={styles.liveDataLabel}>현재 회전속도</ThemedText>
             <ThemedText style={styles.liveDataValue}>{currentAngularVelocity.toFixed(2)} rad/s</ThemedText>
           </View>
           <View style={styles.liveDataRow}>
-            <ThemedText style={styles.liveDataLabel}>최대 각속도 기록</ThemedText>
+            <ThemedText style={styles.liveDataLabel}>최대 회전속도 기록</ThemedText>
             <ThemedText style={styles.liveDataValueMax}>{maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
           </View>
         </View>
@@ -125,6 +126,25 @@ export default function MeasureScreen() {
         <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement}>
           <ThemedText style={styles.stopButtonText}>⏹️ 측정 완료</ThemedText>
         </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderSplashScreen = () => {
+    return (
+      <View style={{ flex: 1, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'black', zIndex: 999 }}>
+        <Video
+          source={require("@/assets/download.mov")}
+          style={{ flex: 1, width: '100%', height: '100%' }}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping={false}
+          onPlaybackStatusUpdate={(status) => {
+            if (status.isLoaded && status.didJustFinish) {
+              setMeasurementState('result');
+            }
+          }}
+        />
       </View>
     );
   };
@@ -164,6 +184,11 @@ export default function MeasureScreen() {
     const staffEnergy = WEAPON_SPECS.staff.factor * maxAngularVelocity;
     const maceEnergy = WEAPON_SPECS.mace.factor * maxAngularVelocity;
 
+    // Calculate rotational kinetic energies
+    const flailRotationalEnergy = 3.64 * (maxAngularVelocity ** 2);
+    const staffRotationalEnergy = 1.78 * (maxAngularVelocity ** 2);
+    const maceRotationalEnergy = 1.45 * (maxAngularVelocity ** 2);
+
     // Find the max energy to scale the bars (baseline max is at least flail as it has highest factor)
     const maxEnergyValue = Math.max(flailEnergy, staffEnergy, maceEnergy, 100);
 
@@ -171,10 +196,20 @@ export default function MeasureScreen() {
     const staffWidth = Math.min((staffEnergy / maxEnergyValue) * 100, 100);
     const maceWidth = Math.min((maceEnergy / maxEnergyValue) * 100, 100);
 
+    const maxRotationalEnergyValue = Math.max(flailRotationalEnergy, staffRotationalEnergy, maceRotationalEnergy, 100);
+    const flailRotationalWidth = Math.min((flailRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
+    const staffRotationalWidth = Math.min((staffRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
+    const maceRotationalWidth = Math.min((maceRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
+
     return (
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
         <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
-          <ThemedText style={styles.finalTitle}>무기별 운동에너지 비교 측정 결과</ThemedText>
+          <ThemedText style={styles.finalTitle}>무기별 평균충격량 비교 측정 결과</ThemedText>
+
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: 15, borderRadius: 12, marginBottom: 20, alignItems: 'center' }}>
+            <ThemedText style={{ fontSize: 16, marginBottom: 5 }}>측정된 최대 회전속도</ThemedText>
+            <ThemedText type="title" style={{ fontSize: 28, fontWeight: 'bold' }}>{maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
+          </View>
 
           {/* 편곤 Gauge */}
           <GaugeBar label={WEAPON_SPECS.flail.name} energy={flailEnergy} targetWidth={flailWidth} color="#5AC8FA" />
@@ -184,6 +219,19 @@ export default function MeasureScreen() {
 
           {/* 철퇴 Gauge */}
           <GaugeBar label={WEAPON_SPECS.mace.name} energy={maceEnergy} targetWidth={maceWidth} color="#FF9500" />
+
+          <View style={{ marginTop: 20, marginBottom: 10, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
+          
+          <ThemedText style={[styles.finalTitle, { marginTop: 10 }]}>무기별 회전운동에너지 비교</ThemedText>
+
+          {/* 편곤 Rotational Gauge */}
+          <GaugeBar label={WEAPON_SPECS.flail.name} energy={flailRotationalEnergy} targetWidth={flailRotationalWidth} color="#5AC8FA" />
+
+          {/* 봉 Rotational Gauge */}
+          <GaugeBar label={WEAPON_SPECS.staff.name} energy={staffRotationalEnergy} targetWidth={staffRotationalWidth} color="#4CD964" />
+
+          {/* 철퇴 Rotational Gauge */}
+          <GaugeBar label={WEAPON_SPECS.mace.name} energy={maceRotationalEnergy} targetWidth={maceRotationalWidth} color="#FF9500" />
 
           <View style={[styles.buttonRow, {marginTop: 40}]}>
             <TouchableOpacity style={styles.captureButton} onPress={captureScreen}>
@@ -199,18 +247,23 @@ export default function MeasureScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ThemedView style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ThemedText style={styles.backButtonText}>← 돌아가기</ThemedText>
-        </TouchableOpacity>
-        <ThemedText style={styles.title}>운동에너지 측정</ThemedText>
-      </ThemedView>
+    <>
+      <SafeAreaView style={styles.safeArea}>
+        {measurementState !== 'splash' && (
+          <ThemedView style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ThemedText style={styles.backButtonText}>← 돌아가기</ThemedText>
+            </TouchableOpacity>
+            <ThemedText style={styles.title}>에너지 측정</ThemedText>
+          </ThemedView>
+        )}
 
-      {measurementState === 'ready' && renderReadyScreen()}
-      {measurementState === 'measuring' && renderMeasuringScreen()}
-      {measurementState === 'result' && renderResultScreen()}
-    </SafeAreaView>
+        {measurementState === 'ready' && renderReadyScreen()}
+        {measurementState === 'measuring' && renderMeasuringScreen()}
+        {measurementState === 'result' && renderResultScreen()}
+      </SafeAreaView>
+      {measurementState === 'splash' && renderSplashScreen()}
+    </>
   );
 }
 
