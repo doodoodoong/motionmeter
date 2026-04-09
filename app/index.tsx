@@ -29,13 +29,25 @@ export default function HomeScreen() {
         {/* 선택 버튼들 */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={[styles.selectionButton, styles.elementaryButton]}
-            onPress={() => router.push("/measure" as any)}
+            style={[styles.selectionButton, styles.elementaryButton, { backgroundColor: '#5AC8FA', marginBottom: 15 }]}
+            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'flail' } })}
           >
-            <ThemedText style={styles.buttonTitle}>측정 시작하기</ThemedText>
-            <ThemedText style={styles.buttonDescription}>
-              스마트폰을 휘둘러 편곤, 봉, 철퇴의 에너지를 한 번에 잽니다!
-            </ThemedText>
+            <ThemedText style={styles.buttonTitle}>편곤 측정하기</ThemedText>
+            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 편곤의 에너지를 측정합니다!</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.selectionButton, styles.elementaryButton, { backgroundColor: '#4CD964', marginBottom: 15 }]}
+            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'staff' } })}
+          >
+            <ThemedText style={styles.buttonTitle}>봉 측정하기</ThemedText>
+            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 봉의 에너지를 측정합니다!</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.selectionButton, styles.elementaryButton, { backgroundColor: '#FF9500' }]}
+            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'mace' } })}
+          >
+            <ThemedText style={styles.buttonTitle}>철퇴 측정하기</ThemedText>
+            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 철퇴의 에너지를 측정합니다!</ThemedText>
           </TouchableOpacity>
         </View>
 

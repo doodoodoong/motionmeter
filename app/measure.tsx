@@ -3,7 +3,7 @@ import { ThemedView } from "@/components/themed-view";
 import { WEAPON_SPECS } from "@/constants/weapon-specs";
 import { measureStyles as styles } from "@/styles/measure.styles";
 import * as MediaLibrary from "expo-media-library";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Gyroscope } from "expo-sensors";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,12 +15,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
-import { Video, ResizeMode } from "expo-av";
+import { useVideoPlayer, VideoView } from "expo-video";
+import { useEventListener } from "expo";
 
 type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 
 export default function MeasureScreen() {
   const router = useRouter();
+  const { weapon } = useLocalSearchParams<{ weapon: string }>();
+  const selectedWeapon = (weapon as 'flail' | 'staff' | 'mace') || 'flail';
+  
   const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
   
   const [gyroSubscription, setGyroSubscription] = useState<any>(null);
@@ -28,6 +32,16 @@ export default function MeasureScreen() {
   
   const [maxAngularVelocity, setMaxAngularVelocity] = useState(0);
   const [currentAngularVelocity, setCurrentAngularVelocity] = useState(0);
+
+  const player = useVideoPlayer(require("@/assets/download.mov"), player => {
+    player.loop = false;
+  });
+
+  useEventListener(player, 'playToEnd', () => {
+    if (measurementState === 'splash') {
+      setMeasurementState('result');
+    }
+  });
 
   useEffect(() => {
     Gyroscope.setUpdateInterval(100);
@@ -71,6 +85,7 @@ export default function MeasureScreen() {
     }
 
     setMeasurementState('splash');
+    player.replay();
   };
 
   const resetAll = () => {
@@ -89,7 +104,7 @@ export default function MeasureScreen() {
           </View>
           <ThemedText style={styles.readyDescription}>
             스마트폰을 손에 꼭 쥐고 강하게 휘둘러보세요!{'\n'}
-            한 번의 휘두름으로 세 가지 무기의 파괴력을 측정합니다.
+            선택한 무기의 파괴력을 측정합니다.
           </ThemedText>
         </View>
 
@@ -133,17 +148,11 @@ export default function MeasureScreen() {
   const renderSplashScreen = () => {
     return (
       <View style={{ flex: 1, position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'black', zIndex: 999 }}>
-        <Video
-          source={require("@/assets/download.mov")}
+        <VideoView
+          player={player}
           style={{ flex: 1, width: '100%', height: '100%' }}
-          resizeMode={ResizeMode.COVER}
-          shouldPlay
-          isLooping={false}
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              setMeasurementState('result');
-            }
-          }}
+          contentFit="cover"
+          nativeControls={false}
         />
       </View>
     );
@@ -179,59 +188,41 @@ export default function MeasureScreen() {
   };
 
   const renderResultScreen = () => {
-    // Calculatate energies based on factors
-    const flailEnergy = WEAPON_SPECS.flail.factor * maxAngularVelocity;
-    const staffEnergy = WEAPON_SPECS.staff.factor * maxAngularVelocity;
-    const maceEnergy = WEAPON_SPECS.mace.factor * maxAngularVelocity;
+    // Calculate energy based on factor
+    const weaponInfo = WEAPON_SPECS[selectedWeapon];
+    const energy = weaponInfo.factor * maxAngularVelocity;
 
-    // Calculate rotational kinetic energies
-    const flailRotationalEnergy = 3.64 * (maxAngularVelocity ** 2);
-    const staffRotationalEnergy = 1.78 * (maxAngularVelocity ** 2);
-    const maceRotationalEnergy = 1.45 * (maxAngularVelocity ** 2);
+    // Calculate rotational kinetic energy
+    let rotationalFactor = 1;
+    let color = "#5AC8FA";
+    if (selectedWeapon === 'flail') { rotationalFactor = 3.64; color = "#5AC8FA"; }
+    else if (selectedWeapon === 'staff') { rotationalFactor = 1.78; color = "#4CD964"; }
+    else if (selectedWeapon === 'mace') { rotationalFactor = 1.45; color = "#FF9500"; }
+    
+    const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
 
-    // Find the max energy to scale the bars (baseline max is at least flail as it has highest factor)
-    const maxEnergyValue = Math.max(flailEnergy, staffEnergy, maceEnergy, 100);
-
-    const flailWidth = Math.min((flailEnergy / maxEnergyValue) * 100, 100);
-    const staffWidth = Math.min((staffEnergy / maxEnergyValue) * 100, 100);
-    const maceWidth = Math.min((maceEnergy / maxEnergyValue) * 100, 100);
-
-    const maxRotationalEnergyValue = Math.max(flailRotationalEnergy, staffRotationalEnergy, maceRotationalEnergy, 100);
-    const flailRotationalWidth = Math.min((flailRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
-    const staffRotationalWidth = Math.min((staffRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
-    const maceRotationalWidth = Math.min((maceRotationalEnergy / maxRotationalEnergyValue) * 100, 100);
+    const energyWidth = 100;
+    const rotationalWidth = 100;
 
     return (
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
         <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
-          <ThemedText style={styles.finalTitle}>무기별 평균충격량 비교 측정 결과</ThemedText>
+          <ThemedText style={styles.finalTitle}>평균충격량 측정 결과</ThemedText>
 
           <View style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: 15, borderRadius: 12, marginBottom: 20, alignItems: 'center' }}>
             <ThemedText style={{ fontSize: 16, marginBottom: 5 }}>측정된 최대 회전속도</ThemedText>
             <ThemedText type="title" style={{ fontSize: 28, fontWeight: 'bold' }}>{maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
           </View>
 
-          {/* 편곤 Gauge */}
-          <GaugeBar label={WEAPON_SPECS.flail.name} energy={flailEnergy} targetWidth={flailWidth} color="#5AC8FA" />
-
-          {/* 봉 Gauge */}
-          <GaugeBar label={WEAPON_SPECS.staff.name} energy={staffEnergy} targetWidth={staffWidth} color="#4CD964" />
-
-          {/* 철퇴 Gauge */}
-          <GaugeBar label={WEAPON_SPECS.mace.name} energy={maceEnergy} targetWidth={maceWidth} color="#FF9500" />
+          {/* Selected Weapon Gauge */}
+          <GaugeBar label={weaponInfo.name} energy={energy} targetWidth={energyWidth} color={color} />
 
           <View style={{ marginTop: 20, marginBottom: 10, height: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} />
           
-          <ThemedText style={[styles.finalTitle, { marginTop: 10 }]}>무기별 회전운동에너지 비교</ThemedText>
+          <ThemedText style={[styles.finalTitle, { marginTop: 10 }]}>회전운동에너지</ThemedText>
 
-          {/* 편곤 Rotational Gauge */}
-          <GaugeBar label={WEAPON_SPECS.flail.name} energy={flailRotationalEnergy} targetWidth={flailRotationalWidth} color="#5AC8FA" />
-
-          {/* 봉 Rotational Gauge */}
-          <GaugeBar label={WEAPON_SPECS.staff.name} energy={staffRotationalEnergy} targetWidth={staffRotationalWidth} color="#4CD964" />
-
-          {/* 철퇴 Rotational Gauge */}
-          <GaugeBar label={WEAPON_SPECS.mace.name} energy={maceRotationalEnergy} targetWidth={maceRotationalWidth} color="#FF9500" />
+          {/* Selected Weapon Rotational Gauge */}
+          <GaugeBar label={weaponInfo.name} energy={rotationalEnergy} targetWidth={rotationalWidth} color={color} />
 
           <View style={[styles.buttonRow, {marginTop: 40}]}>
             <TouchableOpacity style={styles.captureButton} onPress={captureScreen}>
