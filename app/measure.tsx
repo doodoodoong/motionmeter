@@ -2,9 +2,11 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { WEAPON_SPECS } from "@/constants/weapon-specs";
 import { measureStyles as styles } from "@/styles/measure.styles";
+import { useEventListener } from "expo";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Gyroscope } from "expo-sensors";
+import { useVideoPlayer, VideoView } from "expo-video";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -15,8 +17,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
-import { useVideoPlayer, VideoView } from "expo-video";
-import { useEventListener } from "expo";
 
 type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 
@@ -207,7 +207,7 @@ export default function MeasureScreen() {
     return (
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
         <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
-          <ThemedText style={styles.finalTitle}>평균충격량 측정 결과</ThemedText>
+          <ThemedText style={styles.finalTitle}>평균충격력 측정 결과</ThemedText>
 
           <View style={{ backgroundColor: 'rgba(0,0,0,0.05)', padding: 15, borderRadius: 12, marginBottom: 20, alignItems: 'center' }}>
             <ThemedText style={{ fontSize: 16, marginBottom: 5 }}>측정된 최대 회전속도</ThemedText>
