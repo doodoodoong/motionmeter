@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ViewShot from "react-native-view-shot";
+import { uploadMeasurementResult } from "@/utils/firebase";
 
 type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 
@@ -83,6 +84,23 @@ export default function MeasureScreen() {
       gyroSubscriptionRef.current = null;
       setGyroSubscription(null);
     }
+
+    let rotationalFactor = 1;
+    if (selectedWeapon === 'flail') { rotationalFactor = 3.64; }
+    else if (selectedWeapon === 'staff') { rotationalFactor = 1.78; }
+    else if (selectedWeapon === 'mace') { rotationalFactor = 1.45; }
+    
+    const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
+
+    let weaponKorean = "편곤";
+    if (selectedWeapon === 'staff') weaponKorean = "봉";
+    else if (selectedWeapon === 'mace') weaponKorean = "철퇴";
+
+    uploadMeasurementResult({
+      weapon: weaponKorean,
+      maxAngularVelocity: maxAngularVelocity,
+      rotationalEnergy: rotationalEnergy
+    });
 
     setMeasurementState('splash');
     player.replay();

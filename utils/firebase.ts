@@ -15,52 +15,33 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export type GradeLevel = 'elementary' | 'secondary';
-export type FlailCategory = 'infantry' | 'cavalry';
+export type WeaponType = 'flail' | 'staff' | 'mace';
 
 export interface MeasurementData {
-  maxEnergy: number;
+  weapon: string;
   maxAngularVelocity: number;
+  rotationalEnergy: number;
 }
 
 /**
  * 측정 결과를 Cloud Firestore에 업로드
- * 경로: measurements/{gradeLevel}/{flailType}/{docId}
+ * 경로: measurements/{docId}
  */
 export const uploadMeasurementResult = async (
-  gradeLevel: GradeLevel,
-  flailType: FlailCategory,
   data: MeasurementData
 ): Promise<boolean> => {
   try {
-    const collectionRef = collection(db, 'measurements', gradeLevel, flailType);
+    const collectionRef = collection(db, 'measurements');
     
     await addDoc(collectionRef, {
-      ...data,
+      weapon: data.weapon,
+      maxAngularVelocity: data.maxAngularVelocity,
+      rotationalEnergy: data.rotationalEnergy,
       timestamp: serverTimestamp(),
     });
     
-    console.log(`측정 결과 업로드 성공: ${gradeLevel}/${flailType}`);
+    console.log(`측정 결과 업로드 성공: ${data.weapon}`);
     return true;
-  } catch (error) {
-    console.error('Firestore 업로드 오류:', error);
-    return false;
-  }
-};
-
-/**
- * 전체 측정 결과 (보병용 + 마상용) 한 번에 업로드
- */
-export const uploadFinalResults = async (
-  gradeLevel: GradeLevel,
-  infantryData: MeasurementData,
-  cavalryData: MeasurementData
-): Promise<boolean> => {
-  try {
-    const infantrySuccess = await uploadMeasurementResult(gradeLevel, 'infantry', infantryData);
-    const cavalrySuccess = await uploadMeasurementResult(gradeLevel, 'cavalry', cavalryData);
-    
-    return infantrySuccess && cavalrySuccess;
   } catch (error) {
     console.error('Firestore 업로드 오류:', error);
     return false;
