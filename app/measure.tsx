@@ -96,7 +96,7 @@ export default function MeasureScreen() {
     if (selectedWeapon === 'staff') weaponKorean = "봉";
     else if (selectedWeapon === 'mace') weaponKorean = "철퇴";
 
-    uploadMeasurementResult({
+    await uploadMeasurementResult({
       weapon: weaponKorean,
       maxAngularVelocity: maxAngularVelocity,
       rotationalEnergy: rotationalEnergy
