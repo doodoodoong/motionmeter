@@ -3,7 +3,7 @@ export interface WeaponSpec {
   factor: number;
 }
 
-export const WEAPON_SPECS: Record<'flail' | 'staff' | 'mace', WeaponSpec> = {
+export const WEAPON_SPECS: Record<'flail' | 'staff', WeaponSpec> = {
   flail: {
     name: '편곤',
     factor: 85.5,
@@ -11,9 +11,5 @@ export const WEAPON_SPECS: Record<'flail' | 'staff' | 'mace', WeaponSpec> = {
   staff: {
     name: '봉',
     factor: 28.5,
-  },
-  mace: {
-    name: '철퇴',
-    factor: 34.2,
   },
 };

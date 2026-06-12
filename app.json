@@ -2,7 +2,7 @@
   "expo": {
     "name": "편곤Lab",
     "slug": "motionmeter",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "motionmeter",
@@ -12,7 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 7,
+      "versionCode": 8,
       "package": "com.doodoodoong.motionmeter",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",

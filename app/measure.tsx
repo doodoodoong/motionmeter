@@ -24,7 +24,7 @@ type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 export default function MeasureScreen() {
   const router = useRouter();
   const { weapon } = useLocalSearchParams<{ weapon: string }>();
-  const selectedWeapon = (weapon as 'flail' | 'staff' | 'mace') || 'flail';
+  const selectedWeapon = (weapon as 'flail' | 'staff') || 'flail';
   
   const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
   
@@ -34,7 +34,7 @@ export default function MeasureScreen() {
   const [maxAngularVelocity, setMaxAngularVelocity] = useState(0);
   const [currentAngularVelocity, setCurrentAngularVelocity] = useState(0);
 
-  const player = useVideoPlayer(require("@/assets/download.mov"), player => {
+  const player = useVideoPlayer(require("@/assets/download.mp4"), player => {
     player.loop = false;
   });
 
@@ -88,13 +88,11 @@ export default function MeasureScreen() {
     let rotationalFactor = 1;
     if (selectedWeapon === 'flail') { rotationalFactor = 3.64; }
     else if (selectedWeapon === 'staff') { rotationalFactor = 1.78; }
-    else if (selectedWeapon === 'mace') { rotationalFactor = 1.45; }
     
     const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
 
     let weaponKorean = "편곤";
     if (selectedWeapon === 'staff') weaponKorean = "봉";
-    else if (selectedWeapon === 'mace') weaponKorean = "철퇴";
 
     await uploadMeasurementResult({
       weapon: weaponKorean,
@@ -169,7 +167,7 @@ export default function MeasureScreen() {
         <VideoView
           player={player}
           style={{ flex: 1, width: '100%', height: '100%' }}
-          contentFit="cover"
+          contentFit="contain"
           nativeControls={false}
         />
       </View>
@@ -215,7 +213,6 @@ export default function MeasureScreen() {
     let color = "#5AC8FA";
     if (selectedWeapon === 'flail') { rotationalFactor = 3.64; color = "#5AC8FA"; }
     else if (selectedWeapon === 'staff') { rotationalFactor = 1.78; color = "#4CD964"; }
-    else if (selectedWeapon === 'mace') { rotationalFactor = 1.45; color = "#FF9500"; }
     
     const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
 

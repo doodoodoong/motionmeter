@@ -79,7 +79,6 @@ export const SIMPLE_COLORS = {
   gauge: {
     flail: '#5AC8FA',   // 시안 계열의 파랑
     staff: '#4CD964',   // 밝은 초록
-    mace:  '#FF9500',   // 오렌지
     track: '#EFEFEF',   // 게이지 배경 회색
   }
 };

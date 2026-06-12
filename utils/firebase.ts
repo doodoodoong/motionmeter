@@ -15,7 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export type WeaponType = 'flail' | 'staff' | 'mace';
+export type WeaponType = 'flail' | 'staff';
 
 export interface MeasurementData {
   weapon: string;

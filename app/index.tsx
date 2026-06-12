@@ -42,13 +42,6 @@ export default function HomeScreen() {
             <ThemedText style={styles.buttonTitle}>봉 측정하기</ThemedText>
             <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 봉의 에너지를 측정합니다!</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.selectionButton, styles.elementaryButton, { backgroundColor: '#FF9500' }]}
-            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'mace' } })}
-          >
-            <ThemedText style={styles.buttonTitle}>철퇴 측정하기</ThemedText>
-            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 철퇴의 에너지를 측정합니다!</ThemedText>
-          </TouchableOpacity>
         </View>
 
         {/* 하단 정보 */}

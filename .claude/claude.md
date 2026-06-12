@@ -132,3 +132,11 @@ Firestore 연동 문제를 분석할 때 아래 항목을 우선적으로 확인
 - 문제 원인
 - 해결 방법
 - 남아 있는 위험 요소 또는 추가 확인 사항
+
+## 멀티에이전트 레이아웃 규칙
+
+1. 첫 에이전트: `cmux new-split right` (오케스트레이터 기준 오른쪽, 출력 `OK surface:<N>`에서 ID 확인)
+2. 추가 에이전트: `cmux new-split down --surface <기존 오른쪽 surface id>`
+3. 구조 확인: `cmux tree`
+4. 명령 전송은 항상 `cmux send --surface <id> "..."\n` 으로 surface ID 명시
+5. 에이전트는 인터랙티브 모드로 실행한다 (`claude "<작업>"`). `claude -p`(headless)는 작업 과정이 안 보이므로 사용하지 않는다.
