@@ -20,25 +20,31 @@ export const measureStyles = StyleSheet.create({
   backButton: {
     position: 'absolute',
     left: wp(3),
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: hp(0.5),
     paddingHorizontal: wp(2),
   },
   backButtonText: {
-    color: SIMPLE_COLORS.primary,
-    fontSize: fontScale(16),
-    fontWeight: '600',
+    color: SIMPLE_COLORS.text.primary,
+    fontSize: fontScale(15),
+    fontWeight: '500',
+    marginLeft: 2,
   },
   title: {
     color: SIMPLE_COLORS.text.primary,
     fontSize: fontScale(18),
     fontWeight: '600',
   },
+
   stateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(6),
   },
+
+  // --- Ready ---
   readyBox: {
     ...SIMPLE_STYLES.card,
     width: '100%',
@@ -46,21 +52,9 @@ export const measureStyles = StyleSheet.create({
     paddingVertical: hp(4),
     marginBottom: hp(4),
   },
-  infantryBox: {
-    // keeping object key for measure.tsx ref
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: hp(1),
-  },
-  readyEmoji: {
-    fontSize: fontScale(32),
-    marginRight: wp(2),
-  },
   readyTitle: {
-    fontSize: fontScale(24),
-    fontWeight: 'bold',
+    fontSize: fontScale(20),
+    fontWeight: '600',
     color: SIMPLE_COLORS.text.primary,
     marginBottom: hp(1),
   },
@@ -70,324 +64,163 @@ export const measureStyles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: fontScale(22),
   },
-  specBox: {
-    backgroundColor: SIMPLE_COLORS.background.primary,
-    paddingVertical: hp(1),
-    paddingHorizontal: wp(4),
-    borderRadius: 8,
-    marginTop: hp(2),
-  },
-  specText: {
-    fontSize: fontScale(13),
-    color: SIMPLE_COLORS.text.muted,
-  },
-  calibrationRequired: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: hp(2),
-    paddingHorizontal: wp(4),
-    backgroundColor: '#FFFBEA',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FFCC00',
-    marginBottom: hp(2),
-  },
-  calibrationTitle: {
-    fontSize: fontScale(15),
-    fontWeight: 'bold',
-    color: '#D48806',
-    marginBottom: hp(1),
-  },
-  calibrateButton: {
-    paddingVertical: hp(1.2),
-    paddingHorizontal: wp(5),
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFCC00',
-  },
-  calibrateButtonText: {
-    fontSize: fontScale(14),
-    fontWeight: 'bold',
-    color: '#D48806',
-  },
   startButton: {
-    ...SIMPLE_STYLES.primaryButton,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: wp(2),
     width: '100%',
+    borderRadius: 10,
     paddingVertical: hp(2),
-  },
-  infantryButton: {
-    // ref
-  },
-  cavalryButton: {
-    // ref
   },
   startButtonText: {
-    fontSize: fontScale(18),
-    fontWeight: 'bold',
-    color: '#FFF',
+    fontSize: fontScale(17),
+    fontWeight: '600',
+    color: '#FFFDF8',
   },
+
+  // --- Measuring ---
   measuringBox: {
-    ...SIMPLE_STYLES.card,
     width: '100%',
     alignItems: 'center',
-    paddingVertical: hp(4),
-    marginBottom: hp(4),
-  },
-  infantryMeasuring: {
-    // ref
-  },
-  cavalryMeasuring: {
-    // ref
+    marginBottom: hp(7),
   },
   measuringTitle: {
-    fontSize: fontScale(22),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.primary,
-    marginBottom: hp(1.5),
+    fontSize: fontScale(20),
+    fontWeight: '600',
+    color: SIMPLE_COLORS.text.primary,
+    marginBottom: hp(1),
   },
   measuringDescription: {
-    fontSize: fontScale(16),
-    color: SIMPLE_COLORS.text.secondary,
-    textAlign: 'center',
-  },
-  liveDataBox: {
-    ...SIMPLE_STYLES.card,
-    width: '100%',
-    marginBottom: hp(4),
-  },
-  liveDataRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: hp(1.2),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: SIMPLE_COLORS.border.light,
-  },
-  liveDataLabel: {
     fontSize: fontScale(15),
     color: SIMPLE_COLORS.text.secondary,
+    textAlign: 'center',
+    lineHeight: fontScale(22),
   },
-  liveDataValue: {
-    fontSize: fontScale(16),
-    fontWeight: 'bold',
+  liveCenter: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: hp(7),
+  },
+  trail: {
+    position: 'absolute',
+    width: wp(48),
+    height: wp(48),
+    borderRadius: wp(24),
+    borderWidth: 1.5,
+    borderColor: 'rgba(176, 138, 60, 0.18)',
+    borderTopColor: 'rgba(176, 138, 60, 0.45)',
+  },
+  liveValue: {
+    fontSize: fontScale(44),
+    lineHeight: fontScale(58),
+    fontWeight: '700',
     color: SIMPLE_COLORS.text.primary,
+    textAlign: 'center',
+    includeFontPadding: false,
+    paddingVertical: hp(0.5),
   },
-  liveDataValueMax: {
-    fontSize: fontScale(18),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.primary,
+  liveUnit: {
+    fontSize: fontScale(15),
+    color: SIMPLE_COLORS.text.muted,
+    marginTop: hp(0.3),
+  },
+  maxLine: {
+    width: wp(10),
+    height: 1.5,
+    backgroundColor: SIMPLE_COLORS.primary,
+    marginTop: hp(3),
+    marginBottom: hp(1.5),
+  },
+  maxRecord: {
+    fontSize: fontScale(14),
+    color: SIMPLE_COLORS.text.secondary,
+    fontWeight: '500',
   },
   stopButton: {
-    ...SIMPLE_STYLES.button,
-    borderColor: '#FF3B30',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: wp(2),
     width: '100%',
+    borderRadius: 10,
+    paddingVertical: hp(2.2),
+    marginTop: hp(2),
+    backgroundColor: SIMPLE_COLORS.text.primary,
   },
   stopButtonText: {
-    fontSize: fontScale(18),
-    fontWeight: 'bold',
-    color: '#FF3B30',
+    fontSize: fontScale(17),
+    fontWeight: '600',
+    color: '#FFFDF8',
+  },
+
+  // --- Result ---
+  viewShot: {
+    flex: 1,
+    backgroundColor: SIMPLE_COLORS.background.primary,
   },
   resultContainer: {
     flex: 1,
-    backgroundColor: SIMPLE_COLORS.background.secondary,
+    backgroundColor: SIMPLE_COLORS.background.primary,
   },
   resultContent: {
     paddingHorizontal: wp(6),
     paddingTop: hp(4),
     paddingBottom: hp(6),
   },
-  resultTitle: {
-    fontSize: fontScale(24),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.text.primary,
-    textAlign: 'center',
-    marginBottom: hp(2),
-  },
-  resultMainCard: {
-    ...SIMPLE_STYLES.card,
+  resultHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: hp(20),
-    marginBottom: hp(2),
+    marginBottom: hp(3),
   },
-  infantryResult: {
-    // ref
-  },
-  cavalryResultCard: {
-    // ref
-  },
-  resultEnergyValue: {
-    fontSize: fontScale(48),
-    fontWeight: '800',
-    color: SIMPLE_COLORS.primary,
-    marginTop: hp(1),
-  },
-  resultEnergyUnit: {
-    fontSize: fontScale(16),
-    color: SIMPLE_COLORS.text.secondary,
-    marginBottom: hp(1),
-  },
-  resultEnergyLevel: {
+  resultHeaderLabel: {
     fontSize: fontScale(18),
     fontWeight: '600',
     color: SIMPLE_COLORS.text.primary,
   },
-  resultDetailsCard: {
-    ...SIMPLE_STYLES.card,
-    marginBottom: hp(2),
-  },
-  resultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: hp(1.2),
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: SIMPLE_COLORS.border.light,
-  },
-  resultDetailLabel: {
-    fontSize: fontScale(15),
-    color: SIMPLE_COLORS.text.secondary,
-  },
-  resultDetailValue: {
-    fontSize: fontScale(15),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.text.primary,
-  },
-  nextButton: {
-    ...SIMPLE_STYLES.primaryButton,
-    marginTop: hp(2),
-  },
-  nextButtonText: {
-    fontSize: fontScale(16),
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  finalButton: {
-    ...SIMPLE_STYLES.primaryButton,
-    marginTop: hp(2),
-  },
-  finalButtonText: {
-    fontSize: fontScale(16),
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  finalTitle: {
-    fontSize: fontScale(20),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.text.primary,
-    textAlign: 'center',
-    marginBottom: hp(4),
-  },
-  comparisonCard: {
-    ...SIMPLE_STYLES.card,
-    marginBottom: hp(2),
-  },
-  winnerCard: {
-    borderWidth: 2,
-    borderColor: '#FFCC00',
-  },
-  winnerBadge: {
-    position: 'absolute',
-    top: -hp(1.5),
-    right: wp(4),
-    backgroundColor: '#FFCC00',
-    paddingVertical: hp(0.4),
-    paddingHorizontal: wp(2.5),
-    borderRadius: 8,
+  resultHeaderSub: {
     fontSize: fontScale(12),
-    fontWeight: 'bold',
-    color: '#000',
-    overflow: 'hidden',
-  },
-  comparisonHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: hp(1.5),
-  },
-  comparisonEmoji: {
-    fontSize: fontScale(28),
-    marginRight: wp(3),
-  },
-  comparisonTitle: {
-    fontSize: fontScale(18),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.text.primary,
-  },
-  comparisonEnergy: {
-    fontSize: fontScale(36),
-    fontWeight: '800',
+    fontWeight: '600',
     color: SIMPLE_COLORS.primary,
-    textAlign: 'center',
-    paddingVertical: hp(1.5),
+    letterSpacing: 1,
+    marginTop: hp(0.3),
   },
-  comparisonSpec: {
-    fontSize: fontScale(13),
-    color: SIMPLE_COLORS.text.muted,
-    textAlign: 'center',
-    marginTop: hp(1),
-  },
-  differenceCard: {
+  heroValueBox: {
     ...SIMPLE_STYLES.card,
-    backgroundColor: SIMPLE_COLORS.background.primary,
     alignItems: 'center',
-    marginBottom: hp(2),
+    paddingVertical: hp(3.5),
+    marginBottom: hp(3),
   },
-  differenceLabel: {
+  heroValueLabel: {
     fontSize: fontScale(14),
     color: SIMPLE_COLORS.text.secondary,
     marginBottom: hp(0.5),
   },
-  differenceValue: {
-    fontSize: fontScale(24),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.primary,
+  heroValueRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
   },
-  formulaCard: {
-    ...SIMPLE_STYLES.card,
-    backgroundColor: SIMPLE_COLORS.background.primary,
-    alignItems: 'center',
-    marginBottom: hp(3),
+  heroValue: {
+    fontSize: fontScale(48),
+    fontWeight: '800',
+    lineHeight: fontScale(54),
   },
-  formulaTitle: {
-    fontSize: fontScale(15),
-    fontWeight: 'bold',
-    color: SIMPLE_COLORS.text.primary,
+  heroValueUnit: {
+    fontSize: fontScale(18),
+    color: SIMPLE_COLORS.text.muted,
+    marginLeft: 4,
     marginBottom: hp(1),
   },
-  formulaText: {
+  heroSubValue: {
     fontSize: fontScale(14),
     color: SIMPLE_COLORS.text.secondary,
+    marginTop: hp(1),
   },
-  retryButton: {
-    ...SIMPLE_STYLES.button,
-    flex: 1,
-  },
-  retryButtonText: {
-    fontSize: fontScale(15),
-    fontWeight: '600',
-    color: SIMPLE_COLORS.text.primary,
-  },
-  viewShot: {
-    flex: 1,
-    backgroundColor: SIMPLE_COLORS.background.secondary,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: wp(3),
-    marginTop: hp(2),
-  },
-  captureButton: {
-    ...SIMPLE_STYLES.button,
-    flex: 1,
-  },
-  captureButtonText: {
-    fontSize: fontScale(15),
-    fontWeight: '600',
-    color: SIMPLE_COLORS.text.primary,
-  },
-  
-  // --- New Gauge Bar Styles ---
+
+  // --- Gauge ---
   gaugeContainer: {
-    marginVertical: hp(1.8),
+    marginVertical: hp(1.6),
   },
   gaugeHeader: {
     flexDirection: 'row',
@@ -402,17 +235,53 @@ export const measureStyles = StyleSheet.create({
   },
   gaugeValueText: {
     fontSize: fontScale(16),
-    color: '#000000',
+    color: SIMPLE_COLORS.text.primary,
     fontWeight: '600',
   },
   gaugeBackground: {
-    height: hp(1.8),
+    height: 8,
     backgroundColor: SIMPLE_COLORS.gauge.track,
-    borderRadius: hp(1),
+    borderRadius: 0,
     overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  gaugeTick: {
+    position: 'absolute',
+    width: 1.5,
+    height: '100%',
+    backgroundColor: 'rgba(176, 138, 60, 0.55)',
+    zIndex: 2,
   },
   gaugeFill: {
     height: '100%',
-    borderRadius: hp(1),
+  },
+
+  // --- Buttons ---
+  buttonRow: {
+    flexDirection: 'row',
+    gap: wp(3),
+    marginTop: hp(4),
+  },
+  captureButton: {
+    ...SIMPLE_STYLES.button,
+    flex: 1,
+    flexDirection: 'row',
+    gap: wp(2),
+  },
+  captureButtonText: {
+    fontSize: fontScale(15),
+    fontWeight: '600',
+    color: SIMPLE_COLORS.text.primary,
+  },
+  retryButton: {
+    ...SIMPLE_STYLES.button,
+    flex: 1,
+    flexDirection: 'row',
+    gap: wp(2),
+  },
+  retryButtonText: {
+    fontSize: fontScale(15),
+    fontWeight: '600',
+    color: SIMPLE_COLORS.text.primary,
   },
 });

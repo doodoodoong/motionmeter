@@ -1,4 +1,4 @@
-import { SIMPLE_COLORS, SIMPLE_STYLES } from "@/constants/theme";
+import { SIMPLE_COLORS } from "@/constants/theme";
 import { fontScale, hp, wp } from "@/utils/responsive";
 import { StyleSheet } from "react-native";
 
@@ -16,14 +16,21 @@ export const homeStyles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingHorizontal: wp(5),
-    paddingTop: hp(5),
+    paddingTop: hp(4),
     paddingBottom: hp(2),
     backgroundColor: 'transparent',
+  },
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: wp(3),
+    marginBottom: hp(2.5),
   },
   title: {
     color: SIMPLE_COLORS.text.primary,
     fontSize: fontScale(26),
-    fontWeight: '800',
+    fontWeight: '700',
     textAlign: 'center',
     marginBottom: hp(1),
   },
@@ -38,40 +45,48 @@ export const homeStyles = StyleSheet.create({
     paddingHorizontal: wp(6),
   },
   selectionButton: {
-    ...SIMPLE_STYLES.primaryButton,
+    borderRadius: 12,
     paddingVertical: hp(2.5),
     paddingHorizontal: wp(4),
+    alignItems: 'center',
   },
-  elementaryButton: {
-    // keeping object key for index.tsx ref but utilizing simple styles
+  buttonTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: hp(0.5),
+  },
+  buttonIconWrapper: {
+    marginRight: wp(2),
   },
   buttonTitle: {
-    color: '#FFFFFF',
+    color: '#FFFDF8',
     fontSize: fontScale(20),
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: hp(0.5),
     textAlign: 'center',
   },
   buttonDescription: {
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: 'rgba(255, 253, 248, 0.82)',
     fontSize: fontScale(13),
     textAlign: 'center',
   },
   footer: {
     alignItems: 'center',
-    paddingHorizontal: wp(5),
+    paddingHorizontal: wp(8),
     paddingBottom: hp(4),
   },
-  footerCard: {
-    ...SIMPLE_STYLES.card,
-    backgroundColor: SIMPLE_COLORS.background.secondary,
-    paddingVertical: hp(1.5),
-    paddingHorizontal: wp(4),
-    borderRadius: 12,
+  footerLabel: {
+    color: SIMPLE_COLORS.primary,
+    fontSize: fontScale(13),
+    fontWeight: '600',
+    marginBottom: hp(0.6),
+    letterSpacing: 1,
   },
   footerText: {
     color: SIMPLE_COLORS.text.muted,
     fontSize: fontScale(12),
     textAlign: 'center',
+    lineHeight: fontScale(18),
   },
 });
