@@ -255,6 +255,11 @@ export default function MeasureScreen() {
     let rotationalFactor = selectedWeapon === 'staff' ? 1.78 : 3.64;
     const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
 
+    // 게이지 풀스케일 기준: 최대 회전속도 20 rad/s일 때 100%
+    const FULL_SCALE_ANGULAR_VELOCITY = 20;
+    const energyFullScale = weaponInfo.factor * FULL_SCALE_ANGULAR_VELOCITY;
+    const rotationalEnergyFullScale = rotationalFactor * (FULL_SCALE_ANGULAR_VELOCITY ** 2);
+
     return (
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
         <ScrollView style={styles.resultContainer} contentContainerStyle={styles.resultContent}>
@@ -263,22 +268,21 @@ export default function MeasureScreen() {
             <WeaponIcon weapon={selectedWeapon} size={60} />
             <View style={{ marginLeft: 12 }}>
               <ThemedText style={styles.resultHeaderLabel}>{weaponKorean} 측정 결과</ThemedText>
-              <ThemedText style={styles.resultHeaderSub}>MotionMeter</ThemedText>
             </View>
           </View>
 
-          {/* 최상위 수치: 회전운동에너지 */}
+          {/* 최상위 수치: 평균충격력 */}
           <View style={styles.heroValueBox}>
-            <ThemedText style={styles.heroValueLabel}>회전운동에너지</ThemedText>
+            <ThemedText style={styles.heroValueLabel}>평균충격력</ThemedText>
             <View style={styles.heroValueRow}>
-              <ThemedText style={[styles.heroValue, { color: weaponColor }]}>{Math.round(rotationalEnergy)}</ThemedText>
+              <ThemedText style={[styles.heroValue, { color: weaponColor }]}>{Math.round(energy)}</ThemedText>
               <ThemedText style={styles.heroValueUnit}>J</ThemedText>
             </View>
             <ThemedText style={styles.heroSubValue}>최대 회전속도 {maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
           </View>
 
-          <GaugeBar label="회전운동에너지" energy={rotationalEnergy} color={weaponColor} />
-          <GaugeBar label={`${weaponInfo.name} 평균충격력`} energy={energy} color={weaponColor} />
+          <GaugeBar label="평균충격력" energy={energy} maxEnergy={energyFullScale} color={weaponColor} />
+          <GaugeBar label="회전운동에너지" energy={rotationalEnergy} maxEnergy={rotationalEnergyFullScale} color={weaponColor} />
 
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.captureButton} onPress={captureScreen} activeOpacity={0.85}>
@@ -318,17 +322,18 @@ export default function MeasureScreen() {
 }
 
 // 게이지 바 — 6~8px 직선 트랙 + 놋쇠 눈금 3개 (25/50/75%)
-function GaugeBar({ label, energy, color }: { label: string, energy: number, color: string }) {
+function GaugeBar({ label, energy, maxEnergy, color }: { label: string, energy: number, maxEnergy: number, color: string }) {
   const animatedWidth = useRef(new Animated.Value(0)).current;
+  const fillPercent = maxEnergy > 0 ? Math.min(100, Math.max(0, (energy / maxEnergy) * 100)) : 0;
 
   useEffect(() => {
     Animated.timing(animatedWidth, {
-      toValue: 100,
+      toValue: fillPercent,
       duration: 360,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, []);
+  }, [fillPercent]);
 
   return (
     <View style={styles.gaugeContainer}>
