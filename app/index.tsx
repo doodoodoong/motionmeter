@@ -24,10 +24,10 @@ export default function HomeScreen() {
             <BongIcon size={92} />
           </View>
           <ThemedText type="title" style={styles.title}>
-            물리적 타격 위력 분석기
+            상대 타격지수 측정기
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            스마트폰을 휘둘러 위력을 측정해보세요
+            스마트폰을 휘둘러 상대 타격지수를 측정해보세요
           </ThemedText>
         </ThemedView>
 
@@ -36,7 +36,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             activeOpacity={0.85}
             style={[styles.selectionButton, { backgroundColor: SIMPLE_COLORS.weapon.flail, marginBottom: 14 }]}
-            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'flail' } })}
+            onPress={() => router.push({ pathname: "/measure", params: { weapon: 'pyeongon' } })}
           >
             <View style={styles.buttonTitleRow}>
               <View style={styles.buttonIconWrapper}>
@@ -44,7 +44,7 @@ export default function HomeScreen() {
               </View>
               <ThemedText style={styles.buttonTitle}>편곤 측정하기</ThemedText>
             </View>
-            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 편곤의 위력을 측정합니다</ThemedText>
+            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 편곤의 상대 타격지수를 측정합니다</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.85}
@@ -57,7 +57,7 @@ export default function HomeScreen() {
               </View>
               <ThemedText style={styles.buttonTitle}>봉 측정하기</ThemedText>
             </View>
-            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 봉의 위력을 측정합니다</ThemedText>
+            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 봉의 상대 타격지수를 측정합니다</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -65,7 +65,7 @@ export default function HomeScreen() {
         <View style={styles.footer}>
           <ThemedText style={styles.footerLabel}>측정 원리</ThemedText>
           <ThemedText style={styles.footerText}>
-            가속도계와 자이로스코프 센서로 회전운동에너지를 계산합니다
+            자이로스코프로 손잡이의 각속도를 측정해 봉 기준 상대 타격지수를 계산합니다
           </ThemedText>
         </View>
       </View>

@@ -3,7 +3,13 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { WeaponIcon } from "@/components/weapon-icons";
 import { SIMPLE_COLORS } from "@/constants/theme";
-import { WEAPON_SPECS } from "@/constants/weapon-specs";
+import {
+  ENERGY_FULL_SCALE,
+  INDEX_FULL_SCALE,
+  compute,
+  normalizeWeaponId,
+} from "@/constants/physics";
+import { WEAPON_DISPLAY } from "@/constants/weapon-specs";
 import { measureStyles as styles } from "@/styles/measure.styles";
 import { useEventListener } from "expo";
 import * as Haptics from "expo-haptics";
@@ -26,18 +32,28 @@ import { uploadMeasurementResult } from "@/utils/firebase";
 
 type MeasurementState = 'ready' | 'measuring' | 'splash' | 'result';
 
+/** 자이로 표본 주기 (ms) — 50Hz */
+const GYRO_UPDATE_INTERVAL_MS = 20;
+
+/** 이동평균 창 크기 (표본 수) — 단일 표본 스파이크 억제 */
+const SMOOTHING_WINDOW = 3;
+
 export default function MeasureScreen() {
   const router = useRouter();
   const { weapon } = useLocalSearchParams<{ weapon: string }>();
-  const selectedWeapon = (weapon as 'flail' | 'staff') || 'flail';
-  const weaponColor = selectedWeapon === 'staff' ? SIMPLE_COLORS.weapon.staff : SIMPLE_COLORS.weapon.flail;
-  const weaponKorean = selectedWeapon === 'staff' ? '봉' : '편곤';
+  const selectedWeapon = normalizeWeaponId(weapon ?? 'pyeongon');
+  const weaponColor = WEAPON_DISPLAY[selectedWeapon].color;
+  const weaponKorean = WEAPON_DISPLAY[selectedWeapon].name;
 
   const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
 
   const [gyroSubscription, setGyroSubscription] = useState<any>(null);
   const gyroSubscriptionRef = useRef<any>(null);
   const lastHapticMaxRef = useRef(0);
+  /** 3점 이동평균용 최근 표본 버퍼 (rad/s) */
+  const omegaWindowRef = useRef<number[]>([]);
+  /** 업로드에 사용할 최대 각속도 — state 반영 지연과 무관하게 항상 최신값 */
+  const maxAngularVelocityRef = useRef(0);
 
   const [maxAngularVelocity, setMaxAngularVelocity] = useState(0);
   const [currentAngularVelocity, setCurrentAngularVelocity] = useState(0);
@@ -56,7 +72,9 @@ export default function MeasureScreen() {
   });
 
   useEffect(() => {
-    Gyroscope.setUpdateInterval(100);
+    // 스윙의 순간 최대 각속도를 놓치지 않도록 50Hz(20ms)로 표본을 받는다.
+    // 100ms(10Hz)에서는 최고 속도 구간이 표본 사이로 빠져나간다.
+    Gyroscope.setUpdateInterval(GYRO_UPDATE_INTERVAL_MS);
 
     return () => {
       if (gyroSubscriptionRef.current) gyroSubscriptionRef.current.remove();
@@ -85,6 +103,8 @@ export default function MeasureScreen() {
       setMaxAngularVelocity(0);
       setCurrentAngularVelocity(0);
       lastHapticMaxRef.current = 0;
+      maxAngularVelocityRef.current = 0;
+      omegaWindowRef.current = [];
 
       const isGyroscopeAvailable = await Gyroscope.isAvailableAsync();
 
@@ -95,20 +115,33 @@ export default function MeasureScreen() {
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+      // 각속도 산출 방식
+      //  1) 자이로스코프 3축(x, y, z)은 각각 해당 축 기준 회전 각속도(rad/s)다.
+      //  2) 스윙 축이 고정되지 않으므로 3축을 벡터 합성해 각속도 크기를 구한다.
+      //     |ω| = √(ωx² + ωy² + ωz²) — Math.hypot으로 오버플로 없이 계산.
+      //  3) 단일 표본 스파이크(센서 노이즈)를 최댓값으로 오인하지 않도록
+      //     최근 3표본(=60ms) 이동평균을 취한 뒤 그 최댓값을 측정값으로 삼는다.
+      //  4) 여기서 얻는 값은 손잡이(본체)의 각속도이며, 보조체 끝속도가 아니다.
       const newGyroSubscription = Gyroscope.addListener((gyroscopeData) => {
-        const omega = Math.sqrt(gyroscopeData.x ** 2 + gyroscopeData.y ** 2 + gyroscopeData.z ** 2);
+        const omegaRaw = Math.hypot(gyroscopeData.x, gyroscopeData.y, gyroscopeData.z);
+
+        const window = omegaWindowRef.current;
+        window.push(omegaRaw);
+        if (window.length > SMOOTHING_WINDOW) window.shift();
+        const omega = window.reduce((sum, v) => sum + v, 0) / window.length;
+
         setCurrentAngularVelocity(omega);
-        setMaxAngularVelocity((prev) => {
-          if (omega > prev) {
-            // 최대값을 10% 이상 갱신할 때만 햅틱 (매 프레임 금지)
-            if (omega > lastHapticMaxRef.current * 1.1) {
-              lastHapticMaxRef.current = omega;
-              Haptics.selectionAsync();
-            }
-            return omega;
+
+        if (omega > maxAngularVelocityRef.current) {
+          maxAngularVelocityRef.current = omega;
+          setMaxAngularVelocity(omega);
+
+          // 최대값을 10% 이상 갱신할 때만 햅틱 (매 표본 금지)
+          if (omega > lastHapticMaxRef.current * 1.1) {
+            lastHapticMaxRef.current = omega;
+            Haptics.selectionAsync();
           }
-          return prev;
-        });
+        }
       });
       gyroSubscriptionRef.current = newGyroSubscription;
       setGyroSubscription(newGyroSubscription);
@@ -128,16 +161,14 @@ export default function MeasureScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    let rotationalFactor = 1;
-    if (selectedWeapon === 'flail') { rotationalFactor = 3.64; }
-    else if (selectedWeapon === 'staff') { rotationalFactor = 1.78; }
-
-    const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
+    const result = compute(selectedWeapon, maxAngularVelocityRef.current);
 
     await uploadMeasurementResult({
       weapon: weaponKorean,
-      maxAngularVelocity: maxAngularVelocity,
-      rotationalEnergy: rotationalEnergy
+      omegaMax: result.omega,
+      tipSpeed: result.tipSpeed,
+      energy: result.energy,
+      index: result.index,
     });
 
     setMeasurementState('splash');
@@ -147,6 +178,8 @@ export default function MeasureScreen() {
   const resetAll = () => {
     setMaxAngularVelocity(0);
     setCurrentAngularVelocity(0);
+    maxAngularVelocityRef.current = 0;
+    omegaWindowRef.current = [];
     setMeasurementState('ready');
   };
 
@@ -249,16 +282,7 @@ export default function MeasureScreen() {
   };
 
   const renderResultScreen = () => {
-    const weaponInfo = WEAPON_SPECS[selectedWeapon];
-    const energy = weaponInfo.factor * maxAngularVelocity;
-
-    let rotationalFactor = selectedWeapon === 'staff' ? 1.78 : 3.64;
-    const rotationalEnergy = rotationalFactor * (maxAngularVelocity ** 2);
-
-    // 게이지 풀스케일 기준: 최대 회전속도 20 rad/s일 때 100%
-    const FULL_SCALE_ANGULAR_VELOCITY = 20;
-    const energyFullScale = weaponInfo.factor * FULL_SCALE_ANGULAR_VELOCITY;
-    const rotationalEnergyFullScale = rotationalFactor * (FULL_SCALE_ANGULAR_VELOCITY ** 2);
+    const { omega, tipSpeed, energy, index } = compute(selectedWeapon, maxAngularVelocity);
 
     return (
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }} style={styles.viewShot}>
@@ -271,18 +295,53 @@ export default function MeasureScreen() {
             </View>
           </View>
 
-          {/* 최상위 수치: 평균충격력 */}
+          {/* 최상위 수치: 상대 타격지수 */}
           <View style={styles.heroValueBox}>
-            <ThemedText style={styles.heroValueLabel}>평균충격력</ThemedText>
+            <ThemedText style={styles.heroValueLabel}>상대 타격지수</ThemedText>
             <View style={styles.heroValueRow}>
-              <ThemedText style={[styles.heroValue, { color: weaponColor }]}>{Math.round(energy)}</ThemedText>
-              <ThemedText style={styles.heroValueUnit}>J</ThemedText>
+              <ThemedText style={[styles.heroValue, { color: weaponColor }]}>{Math.round(index)}</ThemedText>
             </View>
-            <ThemedText style={styles.heroSubValue}>최대 회전속도 {maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
+            <ThemedText style={styles.heroSubValue}>봉 10 rad/s = 100 기준</ThemedText>
           </View>
 
-          <GaugeBar label="평균충격력" energy={energy} maxEnergy={energyFullScale} color={weaponColor} />
-          <GaugeBar label="회전운동에너지" energy={rotationalEnergy} maxEnergy={rotationalEnergyFullScale} color={weaponColor} />
+          {/* 4개 표시 항목 — 실측/추정 구분 */}
+          <View style={styles.metricList}>
+            <MetricRow
+              label="측정 각속도"
+              value={`${omega.toFixed(1)} rad/s`}
+              origin="measured"
+              note="본체 기준"
+            />
+            <MetricRow
+              label="추정 끝속도"
+              value={`${tipSpeed.toFixed(1)} m/s`}
+              origin="estimated"
+              note="환산계수 적용"
+            />
+            <MetricRow
+              label="등가 운동에너지"
+              value={`${Math.round(energy)} J`}
+              origin="estimated"
+            />
+            <MetricRow
+              label="상대 타격지수"
+              value={`${Math.round(index)}`}
+              origin="estimated"
+              note="봉 10 rad/s = 100"
+              last
+            />
+          </View>
+
+          <GaugeBar label="상대 타격지수" value={index} maxValue={INDEX_FULL_SCALE} color={weaponColor} unit="" />
+          <GaugeBar label="등가 운동에너지" value={energy} maxValue={ENERGY_FULL_SCALE} color={weaponColor} />
+
+          {/* 해석 한계 고정 안내 */}
+          <View style={styles.noticeBox}>
+            <ThemedText style={styles.noticeText}>
+              이 지수는 무기 비교를 위한 값이며 실제 타격력(N)이 아닙니다.
+              측정된 것은 손잡이의 각속도이고, 끝속도는 계산으로 얻은 추정값입니다.
+            </ThemedText>
+          </View>
 
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.captureButton} onPress={captureScreen} activeOpacity={0.85}>
@@ -321,10 +380,49 @@ export default function MeasureScreen() {
   );
 }
 
+// 측정값 한 줄 — 실측(measured) / 추정(estimated) 출처를 배지로 구분
+function MetricRow({
+  label,
+  value,
+  origin,
+  note,
+  last,
+}: {
+  label: string;
+  value: string;
+  origin: 'measured' | 'estimated';
+  note?: string;
+  last?: boolean;
+}) {
+  const isMeasured = origin === 'measured';
+
+  return (
+    <View style={[styles.metricRow, last && styles.metricRowLast]}>
+      <View style={styles.metricLabelColumn}>
+        <ThemedText style={styles.metricLabel}>{label}</ThemedText>
+        <View style={styles.metricBadgeRow}>
+          <View style={[styles.metricBadge, isMeasured ? styles.metricBadgeMeasured : styles.metricBadgeEstimated]}>
+            <ThemedText
+              style={[
+                styles.metricBadgeText,
+                isMeasured ? styles.metricBadgeTextMeasured : styles.metricBadgeTextEstimated,
+              ]}
+            >
+              {isMeasured ? '실측' : '추정'}
+            </ThemedText>
+          </View>
+          {note ? <ThemedText style={styles.metricNote}>{note}</ThemedText> : null}
+        </View>
+      </View>
+      <ThemedText style={styles.metricValue}>{value}</ThemedText>
+    </View>
+  );
+}
+
 // 게이지 바 — 6~8px 직선 트랙 + 놋쇠 눈금 3개 (25/50/75%)
-function GaugeBar({ label, energy, maxEnergy, color }: { label: string, energy: number, maxEnergy: number, color: string }) {
+function GaugeBar({ label, value, maxValue, color, unit = 'J' }: { label: string, value: number, maxValue: number, color: string, unit?: string }) {
   const animatedWidth = useRef(new Animated.Value(0)).current;
-  const fillPercent = maxEnergy > 0 ? Math.min(100, Math.max(0, (energy / maxEnergy) * 100)) : 0;
+  const fillPercent = maxValue > 0 ? Math.min(100, Math.max(0, (value / maxValue) * 100)) : 0;
 
   useEffect(() => {
     Animated.timing(animatedWidth, {
@@ -339,7 +437,7 @@ function GaugeBar({ label, energy, maxEnergy, color }: { label: string, energy: 
     <View style={styles.gaugeContainer}>
       <View style={styles.gaugeHeader}>
         <ThemedText style={styles.gaugeLabel}>{label}</ThemedText>
-        <ThemedText style={styles.gaugeValueText}>{Math.round(energy)} J</ThemedText>
+        <ThemedText style={styles.gaugeValueText}>{unit ? `${Math.round(value)} ${unit}` : Math.round(value)}</ThemedText>
       </View>
       <View style={styles.gaugeBackground}>
         {/* 놋쇠 눈금 3개 */}

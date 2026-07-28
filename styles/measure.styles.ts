@@ -218,6 +218,88 @@ export const measureStyles = StyleSheet.create({
     marginTop: hp(1),
   },
 
+  // --- Metric list (실측/추정 구분) ---
+  metricList: {
+    ...SIMPLE_STYLES.card,
+    paddingVertical: hp(0.5),
+    marginBottom: hp(2),
+  },
+  metricRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: hp(1.6),
+    borderBottomWidth: 1,
+    borderBottomColor: SIMPLE_COLORS.border.light,
+  },
+  metricRowLast: {
+    borderBottomWidth: 0,
+  },
+  metricLabelColumn: {
+    flex: 1,
+    paddingRight: wp(3),
+  },
+  metricLabel: {
+    fontSize: fontScale(15),
+    fontWeight: '500',
+    color: SIMPLE_COLORS.text.primary,
+  },
+  metricBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: wp(1.5),
+    marginTop: hp(0.5),
+  },
+  metricBadge: {
+    paddingHorizontal: wp(1.8),
+    paddingVertical: hp(0.2),
+    borderRadius: 3,
+    borderWidth: 1,
+  },
+  metricBadgeMeasured: {
+    borderColor: SIMPLE_COLORS.primary,
+    backgroundColor: 'rgba(176, 138, 60, 0.12)',
+  },
+  metricBadgeEstimated: {
+    borderColor: SIMPLE_COLORS.border.light,
+    backgroundColor: 'transparent',
+  },
+  metricBadgeText: {
+    fontSize: fontScale(10),
+    fontWeight: '700',
+    lineHeight: fontScale(14),
+  },
+  metricBadgeTextMeasured: {
+    color: SIMPLE_COLORS.primary,
+  },
+  metricBadgeTextEstimated: {
+    color: SIMPLE_COLORS.text.muted,
+  },
+  metricNote: {
+    fontSize: fontScale(11),
+    color: SIMPLE_COLORS.text.muted,
+  },
+  metricValue: {
+    fontSize: fontScale(19),
+    fontWeight: '700',
+    color: SIMPLE_COLORS.text.primary,
+  },
+
+  // --- 해석 한계 안내 ---
+  noticeBox: {
+    marginTop: hp(3),
+    paddingVertical: hp(1.6),
+    paddingHorizontal: wp(4),
+    borderLeftWidth: 2,
+    borderLeftColor: SIMPLE_COLORS.primary,
+    backgroundColor: SIMPLE_COLORS.background.secondary,
+  },
+  noticeText: {
+    fontSize: fontScale(12),
+    lineHeight: fontScale(19),
+    color: SIMPLE_COLORS.text.secondary,
+  },
+
   // --- Gauge ---
   gaugeContainer: {
     marginVertical: hp(1.6),

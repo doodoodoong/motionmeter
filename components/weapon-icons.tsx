@@ -108,6 +108,6 @@ export function BongIcon({ size = 56 }: WeaponIconProps) {
   return <SvgXml xml={BONG_XML} width={size} height={size} />;
 }
 
-export function WeaponIcon({ weapon, size = 56 }: { weapon: "flail" | "staff"; size?: number }) {
-  return weapon === "flail" ? <PyeongonIcon size={size} /> : <BongIcon size={size} />;
+export function WeaponIcon({ weapon, size = 56 }: { weapon: "pyeongon" | "staff"; size?: number }) {
+  return weapon === "pyeongon" ? <PyeongonIcon size={size} /> : <BongIcon size={size} />;
 }
