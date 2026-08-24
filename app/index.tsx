@@ -29,6 +29,9 @@ export default function HomeScreen() {
           <ThemedText style={styles.subtitle}>
             스마트폰을 휘둘러 상대 타격지수를 측정해보세요
           </ThemedText>
+          <ThemedText style={styles.subtitle}>
+            같은 무기를 고른 참가자들과 기록을 겨뤄보세요
+          </ThemedText>
         </ThemedView>
 
         {/* 선택 버튼들 */}

@@ -1,5 +1,17 @@
+/**
+ * 순위 집계 쿼리에는 Firestore 복합 인덱스
+ * `weapon ASC + maxAngularVelocity ASC`와 measurements 컬렉션의 list/read 권한이 필요하다.
+ */
 import { initializeApp } from 'firebase/app';
-import { addDoc, collection, getFirestore, serverTimestamp } from 'firebase/firestore';
+import {
+  addDoc,
+  collection,
+  getCountFromServer,
+  getFirestore,
+  query,
+  serverTimestamp,
+  where,
+} from 'firebase/firestore';
 import {
   COEFF_VERSION,
   INERTIA,
@@ -21,6 +33,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+const RANK_QUERY_TIMEOUT_MS = 5_000;
+
 export type WeaponType = WeaponId;
 
 export interface MeasurementData {
@@ -36,6 +50,81 @@ export interface MeasurementData {
   index: number;
 }
 
+/** Firestore 오류의 code와 message를 호출부에 전달할 문자열로 정규화한다. */
+const getErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    const code = (error as Error & { code?: unknown }).code;
+    return typeof code === 'string'
+      ? `${code}: ${error.message}`
+      : error.message;
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const { code, message } = error as { code?: unknown; message?: unknown };
+    if (typeof code === 'string' && typeof message === 'string') {
+      return `${code}: ${message}`;
+    }
+    if (typeof code === 'string') return code;
+    if (typeof message === 'string') return message;
+  }
+
+  return String(error);
+};
+
+/**
+ * 같은 무기의 기존 기록 수와 현재 각속도보다 작은 기록 수를 집계한다.
+ *
+ * 비교 기준은 파생값 index가 아니라 v1 문서에도 존재하는 maxAngularVelocity다.
+ * 따라서 과거 기록을 포함하며 향후 물리 계수 개정에도 순위가 달라지지 않는다.
+ * 문서 본문 대신 count만 읽고, 두 집계는 동시에 실행해 비용과 지연을 줄인다.
+ */
+export const fetchWeaponRank = async (
+  weaponKorean: string,
+  omegaMax: number
+): Promise<{ total: number; below: number } | null> => {
+  if (!Number.isFinite(omegaMax) || omegaMax <= 0) {
+    console.warn('Firestore 순위 조회 생략: omegaMax가 유효한 양수가 아닙니다.');
+    return null;
+  }
+
+  const collectionRef = collection(db, 'measurements');
+  const totalQuery = query(collectionRef, where('weapon', '==', weaponKorean));
+  const belowQuery = query(
+    collectionRef,
+    where('weapon', '==', weaponKorean),
+    where('maxAngularVelocity', '<', omegaMax)
+  );
+
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    const countsPromise = Promise.all([
+      getCountFromServer(totalQuery),
+      getCountFromServer(belowQuery),
+    ]);
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(
+        () => reject(new Error('순위 조회 시간이 5초를 초과했습니다.')),
+        RANK_QUERY_TIMEOUT_MS
+      );
+    });
+    const [totalSnapshot, belowSnapshot] = await Promise.race([
+      countsPromise,
+      timeoutPromise,
+    ]);
+
+    return {
+      total: totalSnapshot.data().count,
+      below: belowSnapshot.data().count,
+    };
+  } catch (error) {
+    console.warn(`Firestore 순위 조회 오류: ${getErrorMessage(error)}`, error);
+    return null;
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId);
+  }
+};
+
 /**
  * 측정 결과를 Cloud Firestore에 업로드
  * 경로: measurements/{docId}
@@ -50,7 +139,7 @@ export interface MeasurementData {
  */
 export const uploadMeasurementResult = async (
   data: MeasurementData
-): Promise<boolean> => {
+): Promise<{ ok: boolean; error?: string }> => {
   try {
     const collectionRef = collection(db, 'measurements');
 
@@ -78,9 +167,9 @@ export const uploadMeasurementResult = async (
     });
 
     console.log(`측정 결과 업로드 성공: ${data.weapon}`);
-    return true;
+    return { ok: true };
   } catch (error) {
     console.error('Firestore 업로드 오류:', error);
-    return false;
+    return { ok: false, error: getErrorMessage(error) };
   }
 };

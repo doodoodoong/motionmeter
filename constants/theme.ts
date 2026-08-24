@@ -152,3 +152,64 @@ export const SIMPLE_STYLES = {
     alignItems: 'center' as const,
   },
 };
+
+/** 등급 발표 화면 전용 팔레트 — 기존 종이 테마와 분리해 관리한다. */
+export const RANK_COLORS = {
+  background: '#171A16',
+  card: '#262820',
+  gold: '#D7AE4A',
+  vermilion: '#B44732',
+  teal: '#3F6B54',
+  inkBrown: '#756957',
+  brass: '#B08A3C',
+  paper: '#F3EFE6',
+} as const;
+
+export type RankPresentationKey = 'jangwon' | 'geupje' | 'sungnyeon' | 'suryeon' | 'fallback';
+
+export interface RankPresentationConfig {
+  name: string;
+  color: string;
+  rayCount: number;
+  particleCount: number;
+  inkCircleCount: number;
+  doubleGauge: boolean;
+  stampBounce: 'strong' | 'standard';
+  flashColor: string;
+  encouragement: string;
+  haptics: readonly ('heavy' | 'medium' | 'light' | 'success')[];
+}
+
+/** 화면의 조건문 대신 사용하는 등급별 연출 데이터. */
+export const RANK_PRESENTATION: Record<RankPresentationKey, RankPresentationConfig> = {
+  jangwon: {
+    name: '장원', color: RANK_COLORS.gold, rayCount: 20, particleCount: 40,
+    inkCircleCount: 0, doubleGauge: true, stampBounce: 'strong', flashColor: RANK_COLORS.gold,
+    encouragement: '오늘의 기세가 장원에 올랐어요!',
+    haptics: ['heavy', 'medium', 'success'],
+  },
+  geupje: {
+    name: '급제', color: RANK_COLORS.vermilion, rayCount: 14, particleCount: 28,
+    inkCircleCount: 0, doubleGauge: false, stampBounce: 'standard', flashColor: RANK_COLORS.vermilion,
+    encouragement: '힘찬 기록으로 급제했어요!',
+    haptics: ['medium', 'success'],
+  },
+  sungnyeon: {
+    name: '숙련', color: RANK_COLORS.teal, rayCount: 8, particleCount: 14,
+    inkCircleCount: 0, doubleGauge: false, stampBounce: 'standard', flashColor: RANK_COLORS.teal,
+    encouragement: '멋진 움직임이 차곡차곡 익어가요!',
+    haptics: ['medium'],
+  },
+  suryeon: {
+    name: '수련', color: RANK_COLORS.inkBrown, rayCount: 0, particleCount: 8,
+    inkCircleCount: 2, doubleGauge: false, stampBounce: 'standard', flashColor: RANK_COLORS.inkBrown,
+    encouragement: '오늘의 한 번이 내일의 실력을 만들어요!',
+    haptics: ['light'],
+  },
+  fallback: {
+    name: '기록 완료', color: RANK_COLORS.brass, rayCount: 0, particleCount: 8,
+    inkCircleCount: 0, doubleGauge: false, stampBounce: 'standard', flashColor: RANK_COLORS.brass,
+    encouragement: '첫 기록부터 멋진 도전이 시작됐어요!',
+    haptics: ['light'],
+  },
+};
