@@ -1,6 +1,7 @@
 /**
  * 순위 집계 쿼리에는 Firestore 복합 인덱스
  * `weapon ASC + maxAngularVelocity ASC`와 measurements 컬렉션의 list/read 권한이 필요하다.
+ * maxAngularVelocity의 하한·상한 범위 조건도 이 인덱스로 처리한다.
  */
 import { initializeApp } from 'firebase/app';
 import {
@@ -15,6 +16,8 @@ import {
 import {
   COEFF_VERSION,
   INERTIA,
+  RANKING_MAX_ANGULAR_VELOCITY,
+  RANKING_MIN_ANGULAR_VELOCITY,
   normalizeWeaponId,
   type WeaponId,
 } from '@/constants/physics';
@@ -72,27 +75,41 @@ const getErrorMessage = (error: unknown): string => {
 };
 
 /**
- * 같은 무기의 기존 기록 수와 현재 각속도보다 작은 기록 수를 집계한다.
+ * 같은 무기의 유효한 기존 기록 수와 현재 각속도보다 작은 유효 기록 수를 집계한다.
  *
  * 비교 기준은 파생값 index가 아니라 v1 문서에도 존재하는 maxAngularVelocity다.
  * 따라서 과거 기록을 포함하며 향후 물리 계수 개정에도 순위가 달라지지 않는다.
+ * 유효 범위 밖인 현재 기록도 특별 분기하지 않는다. 하한 미만은 below=0으로
+ * 수련, 상한 초과는 below=total로 장원이 되는 의도된 동작이다.
  * 문서 본문 대신 count만 읽고, 두 집계는 동시에 실행해 비용과 지연을 줄인다.
  */
 export const fetchWeaponRank = async (
   weaponKorean: string,
   omegaMax: number
 ): Promise<{ total: number; below: number } | null> => {
-  if (!Number.isFinite(omegaMax) || omegaMax <= 0) {
-    console.warn('Firestore 순위 조회 생략: omegaMax가 유효한 양수가 아닙니다.');
+  if (!Number.isFinite(omegaMax)) {
+    console.warn('Firestore 순위 조회 생략: omegaMax가 유한수가 아닙니다.');
     return null;
   }
 
   const collectionRef = collection(db, 'measurements');
-  const totalQuery = query(collectionRef, where('weapon', '==', weaponKorean));
+  const totalQuery = query(
+    collectionRef,
+    where('weapon', '==', weaponKorean),
+    where('maxAngularVelocity', '>=', RANKING_MIN_ANGULAR_VELOCITY),
+    where('maxAngularVelocity', '<=', RANKING_MAX_ANGULAR_VELOCITY)
+  );
+  // below의 상한을 유효 모집단 상한으로 clamp하면 below 쿼리 결과가 항상
+  // total 쿼리 결과의 부분집합이므로, 상한 초과 기록에서도 below > total이 될 수 없다.
+  const effectiveOmega = Math.min(
+    omegaMax,
+    RANKING_MAX_ANGULAR_VELOCITY
+  );
   const belowQuery = query(
     collectionRef,
     where('weapon', '==', weaponKorean),
-    where('maxAngularVelocity', '<', omegaMax)
+    where('maxAngularVelocity', '>=', RANKING_MIN_ANGULAR_VELOCITY),
+    where('maxAngularVelocity', '<', effectiveOmega)
   );
 
   let timeoutId: ReturnType<typeof setTimeout> | undefined;

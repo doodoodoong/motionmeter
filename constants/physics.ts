@@ -181,8 +181,21 @@ export const compute = (weapon: WeaponIdAlias, omega: number): ComputeResult => 
 // 5. 화면 게이지 스케일
 // ---------------------------------------------------------------------------
 
-/** 게이지 풀스케일 기준 각속도 (rad/s) — 초등학생 스윙 상한 추정 */
-export const FULL_SCALE_ANGULAR_VELOCITY = 20;
+/**
+ * 랭킹 모집단에 포함할 각속도 범위 (rad/s).
+ * 편곤 실측 852건 분포를 기준으로, 하한은 측정만 시작하고 휘두르지 않은 기록을,
+ * 상한은 기기를 흔든 것으로 의심되는 비현실적인 기록을 제외한다.
+ */
+/** 랭킹 모집단에 포함할 각속도 하한 (rad/s) */
+export const RANKING_MIN_ANGULAR_VELOCITY = 1.0;
+/** 랭킹 모집단에 포함할 각속도 상한 (rad/s) */
+export const RANKING_MAX_ANGULAR_VELOCITY = 40.0;
+
+/**
+ * 게이지 풀스케일 기준 각속도 (rad/s).
+ * 편곤 실측 최대는 62.9 rad/s이며, 상위 1% 수준인 40 rad/s를 표시 상한으로 삼는다.
+ */
+export const FULL_SCALE_ANGULAR_VELOCITY = 40;
 
 /** 상대 타격지수 게이지 풀스케일 — 가장 계수가 큰 무기(편곤) 기준 */
 export const INDEX_FULL_SCALE = compute(

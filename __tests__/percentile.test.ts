@@ -40,6 +40,48 @@ describe('computePercentile()', () => {
     expect(computePercentile({ total: 5, below: 0 }).topPercent).toBe(100);
   });
 
+  it('필터로 줄어든 모집단에서도 상위 50%를 급제로 계산한다', () => {
+    expect(computePercentile({ total: 800, below: 408 })).toMatchObject({
+      topPercent: 50,
+      grade: 'geupje',
+      status: 'ok',
+    });
+  });
+
+  it('하한 미만 기록은 below=0으로 상위 100% 수련이 된다', () => {
+    expect(computePercentile({ total: 800, below: 0 })).toMatchObject({
+      topPercent: 100,
+      grade: 'suryeon',
+      status: 'ok',
+    });
+  });
+
+  it('상한 초과 기록은 clamp된 below=total로 상위 1% 장원이 된다', () => {
+    expect(computePercentile({ total: 800, below: 800 })).toMatchObject({
+      topPercent: 1,
+      grade: 'jangwon',
+      status: 'ok',
+    });
+  });
+
+  it('clamp 누락 등으로 below가 total보다 크면 unavailable을 반환한다', () => {
+    expect(computePercentile({ total: 800, below: 801 })).toEqual({
+      topPercent: null,
+      total: 0,
+      grade: null,
+      status: 'unavailable',
+    });
+  });
+
+  it('필터 후 모집단이 최소 표본보다 작으면 insufficient를 반환한다', () => {
+    expect(computePercentile({ total: MIN_SAMPLE - 1, below: 2 })).toEqual({
+      topPercent: null,
+      total: MIN_SAMPLE - 1,
+      grade: null,
+      status: 'insufficient',
+    });
+  });
+
   it.each([
     { below: 9, topPercent: 10, grade: 'jangwon' },
     { below: 5, topPercent: 50, grade: 'geupje' },
