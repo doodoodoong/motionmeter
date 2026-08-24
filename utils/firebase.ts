@@ -41,7 +41,10 @@ const RANK_QUERY_TIMEOUT_MS = 5_000;
 export type WeaponType = WeaponId;
 
 export interface MeasurementData {
-  /** 무기 표시명 (한글) — 기존 스키마와 동일 */
+  /**
+   * 언어 무관 고정 식별자. 반드시 `WEAPON_QUERY_VALUE[weaponId]`를 넘길 것.
+   * **번역 결과(`t('weapon.*')`)를 이 값으로 넘기면 랭킹 모집단이 갈라진다.**
+   */
   weapon: string;
   /** 최대 각속도 (rad/s) — 실측 원본값 */
   omegaMax: number;
@@ -84,7 +87,7 @@ const getErrorMessage = (error: unknown): string => {
  * 문서 본문 대신 count만 읽고, 두 집계는 동시에 실행해 비용과 지연을 줄인다.
  */
 export const fetchWeaponRank = async (
-  weaponKorean: string,
+  weaponQueryValue: string,
   omegaMax: number
 ): Promise<{ total: number; below: number } | null> => {
   if (!Number.isFinite(omegaMax)) {
@@ -95,7 +98,7 @@ export const fetchWeaponRank = async (
   const collectionRef = collection(db, 'measurements');
   const totalQuery = query(
     collectionRef,
-    where('weapon', '==', weaponKorean),
+    where('weapon', '==', weaponQueryValue),
     where('maxAngularVelocity', '>=', RANKING_MIN_ANGULAR_VELOCITY),
     where('maxAngularVelocity', '<=', RANKING_MAX_ANGULAR_VELOCITY)
   );
@@ -107,7 +110,7 @@ export const fetchWeaponRank = async (
   );
   const belowQuery = query(
     collectionRef,
-    where('weapon', '==', weaponKorean),
+    where('weapon', '==', weaponQueryValue),
     where('maxAngularVelocity', '>=', RANKING_MIN_ANGULAR_VELOCITY),
     where('maxAngularVelocity', '<', effectiveOmega)
   );

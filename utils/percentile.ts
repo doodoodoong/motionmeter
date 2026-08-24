@@ -19,14 +19,6 @@ export const GRADE_THRESHOLDS = {
   sungnyeon: 80,
 } as const;
 
-/** 등급의 한글 표시명 */
-export const GRADE_NAME: Record<RankGrade, string> = {
-  jangwon: '장원',
-  geupje: '급제',
-  sungnyeon: '숙련',
-  suryeon: '수련',
-};
-
 /** 상위 백분율을 등급으로 변환한다. 각 경계값은 바로 위 등급에 포함한다. */
 export function gradeForPercent(topPercent: number): RankGrade {
   if (topPercent <= GRADE_THRESHOLDS.jangwon) return 'jangwon';

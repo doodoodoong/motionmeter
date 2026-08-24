@@ -1,8 +1,24 @@
 import React from "react";
 import { SvgXml } from "react-native-svg";
 
-const PYEONGON_XML = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="편곤 (조선시대 전통무기)">
-  <title>편곤 Pyeongon</title>
+import { useI18n } from "@/i18n";
+
+function escapeXml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+  })[character] ?? character);
+}
+
+function isEnglishLabel(label: string): boolean {
+  return /^[\x00-\x7F]*$/.test(label);
+}
+
+const PYEONGON_XML = (label: string, a11yLabel: string) => `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(a11yLabel)}">
+  <title>${escapeXml(label)}</title>
   <defs>
     <linearGradient id="pgWood" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#6B4422"/>
@@ -53,11 +69,11 @@ const PYEONGON_XML = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns=
     <circle cx="256" cy="124" r="5.5" fill="#2A2E34"/>
   </g>
 
-  <text x="256" y="466" text-anchor="middle" font-family="'Nanum Myeongjo','Noto Serif KR',serif" font-size="34" font-weight="700" fill="#5A3A1E" letter-spacing="6">편곤</text>
+  <text x="256" y="466" text-anchor="middle" font-family="'Nanum Myeongjo','Noto Serif KR',serif" font-size="34" font-weight="700" fill="#5A3A1E" letter-spacing="${isEnglishLabel(label) ? 2 : 6}">${escapeXml(label)}</text>
 </svg>`;
 
-const BONG_XML = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="봉 (조선시대 전통무기)">
-  <title>봉 Bong</title>
+const BONG_XML = (label: string, a11yLabel: string) => `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${escapeXml(a11yLabel)}">
+  <title>${escapeXml(label)}</title>
   <defs>
     <linearGradient id="bgWood" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#6B4422"/>
@@ -93,7 +109,7 @@ const BONG_XML = `<svg width="512" height="512" viewBox="0 0 512 512" xmlns="htt
     <rect x="237" y="399" width="40" height="9" rx="4" fill="#4A2E16" opacity="0.8"/>
   </g>
 
-  <text x="256" y="466" text-anchor="middle" font-family="'Nanum Myeongjo','Noto Serif KR',serif" font-size="34" font-weight="700" fill="#5A3A1E" letter-spacing="8">봉</text>
+  <text x="256" y="466" text-anchor="middle" font-family="'Nanum Myeongjo','Noto Serif KR',serif" font-size="34" font-weight="700" fill="#5A3A1E" letter-spacing="${isEnglishLabel(label) ? 2 : 8}">${escapeXml(label)}</text>
 </svg>`;
 
 type WeaponIconProps = {
@@ -101,13 +117,23 @@ type WeaponIconProps = {
 };
 
 export function PyeongonIcon({ size = 56 }: WeaponIconProps) {
-  return <SvgXml xml={PYEONGON_XML} width={size} height={size} />;
+  const { t } = useI18n();
+  const label = t('weaponIcon.pyeongon.label');
+  const a11yLabel = t('a11y.weaponIcon.pyeongon');
+  return <SvgXml xml={PYEONGON_XML(label, a11yLabel)} width={size} height={size} />;
 }
 
 export function BongIcon({ size = 56 }: WeaponIconProps) {
-  return <SvgXml xml={BONG_XML} width={size} height={size} />;
+  const { t } = useI18n();
+  const label = t('weaponIcon.staff.label');
+  const a11yLabel = t('a11y.weaponIcon.staff');
+  return <SvgXml xml={BONG_XML(label, a11yLabel)} width={size} height={size} />;
 }
 
 export function WeaponIcon({ weapon, size = 56 }: { weapon: "pyeongon" | "staff"; size?: number }) {
-  return weapon === "pyeongon" ? <PyeongonIcon size={size} /> : <BongIcon size={size} />;
+  const { t } = useI18n();
+  const label = t(weapon === 'pyeongon' ? 'weaponIcon.pyeongon.label' : 'weaponIcon.staff.label');
+  const a11yLabel = t(weapon === 'pyeongon' ? 'a11y.weaponIcon.pyeongon' : 'a11y.weaponIcon.staff');
+  const xml = weapon === 'pyeongon' ? PYEONGON_XML(label, a11yLabel) : BONG_XML(label, a11yLabel);
+  return <SvgXml xml={xml} width={size} height={size} />;
 }

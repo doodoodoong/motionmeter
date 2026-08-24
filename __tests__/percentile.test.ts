@@ -1,5 +1,4 @@
 import {
-  GRADE_NAME,
   MIN_SAMPLE,
   computePercentile,
   gradeForPercent,
@@ -143,14 +142,5 @@ describe('gradeForPercent()', () => {
     [100, 'suryeon'],
   ] as const)('상위 %i%%를 %s 등급으로 매핑한다', (topPercent, grade) => {
     expect(gradeForPercent(topPercent)).toBe(grade);
-  });
-
-  it('각 등급의 한글 표시명을 제공한다', () => {
-    expect(GRADE_NAME).toEqual({
-      jangwon: '장원',
-      geupje: '급제',
-      sungnyeon: '숙련',
-      suryeon: '수련',
-    });
   });
 });

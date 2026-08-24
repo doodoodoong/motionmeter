@@ -6,15 +6,23 @@ import Animated, { interpolate, useAnimatedProps, type SharedValue } from 'react
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
-export function RankCountUp({ topPercent, color, progress }: { topPercent: number; color: string; progress: SharedValue<number> }) {
+type RankCountUpProps = {
+  topPercent: number;
+  color: string;
+  progress: SharedValue<number>;
+  label: string;
+  accessibilityLabel: string;
+};
+
+export function RankCountUp({ topPercent, color, progress, label, accessibilityLabel }: RankCountUpProps) {
   const animatedProps = useAnimatedProps(() => {
     const value = Math.round(topPercent * interpolate(progress.value, [0.08, 0.5], [0, 1], 'clamp'));
     return { text: String(value), defaultValue: String(value) } as never;
   });
 
   return (
-    <View style={styles.row} accessibilityLabel={`상위 ${topPercent}퍼센트`}>
-      <Text style={styles.prefix}>상위</Text>
+    <View style={styles.row} accessibilityLabel={accessibilityLabel}>
+      <Text style={styles.label}>{label}</Text>
       <AnimatedTextInput
         animatedProps={animatedProps}
         editable={false}
@@ -28,7 +36,7 @@ export function RankCountUp({ topPercent, color, progress }: { topPercent: numbe
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', height: fontScale(68) },
-  prefix: { color: '#F3EFE6', fontFamily: FONT_FAMILY.semibold, fontSize: fontScale(20), marginRight: 8 },
+  label: { color: '#F3EFE6', fontFamily: FONT_FAMILY.semibold, fontSize: fontScale(20), marginRight: 8 },
   number: { fontFamily: FONT_FAMILY.extrabold, fontSize: fontScale(54), padding: 0, minWidth: 68, textAlign: 'right' },
   percent: { fontFamily: FONT_FAMILY.bold, fontSize: fontScale(28), marginLeft: 2 },
 });

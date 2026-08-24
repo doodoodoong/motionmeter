@@ -27,6 +27,36 @@ export const homeStyles = StyleSheet.create({
     gap: wp(3),
     marginBottom: hp(2.5),
   },
+  languageToggleRow: {
+    width: '100%',
+    alignItems: 'flex-end',
+  },
+  languageToggle: {
+    flexDirection: 'row',
+    backgroundColor: SIMPLE_COLORS.background.secondary,
+    borderColor: SIMPLE_COLORS.border.medium,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 2,
+  },
+  languageOption: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    minWidth: 44,
+    borderRadius: 8,
+  },
+  languageOptionSelected: {
+    backgroundColor: SIMPLE_COLORS.primary,
+  },
+  languageOptionText: {
+    color: SIMPLE_COLORS.text.secondary,
+    fontSize: fontScale(13),
+    fontWeight: '600',
+  },
+  languageOptionTextSelected: {
+    color: SIMPLE_COLORS.background.secondary,
+  },
   title: {
     color: SIMPLE_COLORS.text.primary,
     fontSize: fontScale(26),

@@ -5,6 +5,7 @@ import { RankGauge } from '@/components/rank/RankGauge';
 import { RankStamp } from '@/components/rank/RankStamp';
 import { compute, normalizeWeaponId } from '@/constants/physics';
 import { RANK_PRESENTATION, type RankPresentationKey } from '@/constants/theme';
+import { useI18n } from '@/i18n';
 import type { RankGrade } from '@/utils/percentile';
 import { rankStyles as styles } from '@/styles/rank.styles';
 import * as Haptics from 'expo-haptics';
@@ -34,6 +35,7 @@ function performHaptic(kind: 'heavy' | 'medium' | 'light' | 'success') {
 
 export default function RankScreen() {
   const router = useRouter();
+  const { language, t } = useI18n();
   const params = useLocalSearchParams<{
     weapon?: string; omega?: string; top?: string; total?: string; status?: string; grade?: string; uploadOk?: string;
   }>();
@@ -47,10 +49,15 @@ export default function RankScreen() {
   const presentationKey: RankPresentationKey = status === 'ok' && grade ? grade : 'fallback';
   const config = RANK_PRESENTATION[presentationKey];
   const showPercentile = status === 'ok' && grade !== null;
-  const stampLabel = status === 'insufficient' ? '첫 기록' : status === 'unavailable' ? '기록 완료' : config.name;
+  const stampLabel = status === 'insufficient'
+    ? t('grade.short.firstRecord')
+    : status === 'unavailable'
+      ? t('grade.short.recordComplete')
+      : t(`grade.short.${presentationKey}`);
   const encouragement = status === 'unavailable'
-    ? '기록을 멋지게 남겼어요. 다음 도전도 기대할게요!'
-    : config.encouragement;
+    ? t('rank.unavailableEncouragement')
+    : t(`grade.encouragement.${presentationKey}`);
+  const formattedTotal = total.toLocaleString(language === 'ko' ? 'ko-KR' : 'en-US');
 
   const progress = useSharedValue(0);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -104,7 +111,7 @@ export default function RankScreen() {
         <PaperParticles count={config.particleCount} color={config.color} progress={progress} reducedMotion={reducedMotion} />
 
         <View style={styles.content}>
-          <Text style={styles.eyebrow}>오늘의 무예 등급</Text>
+          <Text style={styles.eyebrow}>{t('rank.eyebrow')}</Text>
           <View style={styles.arena}>
             {showPercentile ? (
               <View style={styles.gaugeLayer}>
@@ -112,11 +119,19 @@ export default function RankScreen() {
               </View>
             ) : null}
             <View style={styles.mainCopy}>
-              {showPercentile ? <RankCountUp topPercent={topPercent} color={config.color} progress={progress} /> : (
-                <Text style={styles.fallbackTitle}>{status === 'insufficient' ? '첫 기록이 등록됐어요' : '측정을 완료했어요'}</Text>
+              {showPercentile ? (
+                <RankCountUp
+                  topPercent={topPercent}
+                  color={config.color}
+                  progress={progress}
+                  label={t('rank.topPrefix')}
+                  accessibilityLabel={t('a11y.topPercent', { top: topPercent })}
+                />
+              ) : (
+                <Text style={styles.fallbackTitle}>{status === 'insufficient' ? t('rank.firstRecordRegistered') : t('rank.measurementComplete')}</Text>
               )}
-              {showPercentile ? <Text style={styles.population}>총 {total.toLocaleString()}명 중</Text> : null}
-              <Text style={styles.indexCaption}>상대 타격지수 {Math.round(physicalResult.index)}</Text>
+              {showPercentile ? <Text style={styles.population}>{t('rank.population', { total: formattedTotal })}</Text> : null}
+              <Text style={styles.indexCaption}>{t('rank.indexCaption', { index: Math.round(physicalResult.index) })}</Text>
               <View style={styles.stampSpacing}>
                 <RankStamp config={config} progress={progress} label={stampLabel} reducedMotion={reducedMotion} />
               </View>
@@ -132,7 +147,7 @@ export default function RankScreen() {
               onPress={openResult}
               style={[styles.detailButton, { borderColor: config.color, backgroundColor: `${config.color}22` }, !buttonEnabled && styles.detailButtonDisabled]}
             >
-              <Text style={[styles.detailButtonText, { color: config.color }]}>결과 자세히 보기</Text>
+              <Text style={[styles.detailButtonText, { color: config.color }]}>{t('rank.viewDetails')}</Text>
             </TouchableOpacity>
           </View>
         </View>
