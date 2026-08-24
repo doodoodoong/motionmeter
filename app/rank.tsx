@@ -8,7 +8,7 @@ import { RANK_PRESENTATION, type RankPresentationKey } from '@/constants/theme';
 import type { RankGrade } from '@/utils/percentile';
 import { rankStyles as styles } from '@/styles/rank.styles';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Text, TouchableOpacity, View } from 'react-native';
@@ -91,7 +91,7 @@ export default function RankScreen() {
 
   const openResult = () => {
     if (!buttonEnabled) return;
-    router.replace({ pathname: '/result', params: { ...params, weapon, omega: String(omega) } } as unknown as Href);
+    router.replace({ pathname: '/result', params: { ...params, weapon, omega: String(omega) } });
   };
 
   return (

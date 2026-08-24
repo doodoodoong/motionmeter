@@ -12,6 +12,9 @@ interface RankStampProps {
 }
 
 export function RankStamp({ config, progress, label, reducedMotion = false }: RankStampProps) {
+  const stampLabel = label ?? config.name;
+  const glyphCount = stampLabel.replace(/\s/g, '').length;
+  const labelFontSize = fontScale(Math.max(22, 34 - Math.max(0, glyphCount - 2) * 6));
   const stampScale = useSharedValue(reducedMotion ? 1 : 2.4);
 
   useEffect(() => {
@@ -47,7 +50,12 @@ export function RankStamp({ config, progress, label, reducedMotion = false }: Ra
       ))}
       <Animated.View style={[styles.stamp, { borderColor: config.color }, animatedStyle]}>
         <View style={[styles.innerBorder, { borderColor: config.color }]}>
-          <Text style={[styles.text, { color: config.color }]}>{label ?? config.name}</Text>
+          <Text
+            numberOfLines={1}
+            style={[styles.text, { color: config.color, fontSize: labelFontSize, lineHeight: labelFontSize * 1.15 }]}
+          >
+            {stampLabel}
+          </Text>
         </View>
       </Animated.View>
     </View>
@@ -64,6 +72,13 @@ const styles = StyleSheet.create({
     width: '100%', height: '100%', borderWidth: 1.5, borderRadius: wp(1.5),
     alignItems: 'center', justifyContent: 'center',
   },
-  text: { fontFamily: FONT_FAMILY.extrabold, fontSize: fontScale(34), letterSpacing: 3 },
+  text: {
+    width: '100%',
+    marginLeft: 3,
+    fontFamily: FONT_FAMILY.extrabold,
+    letterSpacing: 3,
+    textAlign: 'center',
+    includeFontPadding: false,
+  },
   inkCircle: { position: 'absolute', borderWidth: 1.5, borderRadius: 999 },
 });

@@ -9,7 +9,7 @@ import { fetchWeaponRank, uploadMeasurementResult } from '@/utils/firebase';
 import { computePercentile, type PercentileResult } from '@/utils/percentile';
 import { useEventListener } from 'expo';
 import * as Haptics from 'expo-haptics';
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Gyroscope } from 'expo-sensors';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -83,7 +83,7 @@ export default function MeasureScreen() {
         grade: rank.grade ?? '',
         uploadOk: uploadOk === null ? 'unknown' : String(uploadOk),
       },
-    } as unknown as Href);
+    });
   }, [clearPostVideoTimer, router, selectedWeapon]);
 
   const tryFinishSplash = useCallback(() => {
