@@ -4,6 +4,7 @@ import { WeaponIcon } from '@/components/weapon-icons';
 import { ENERGY_FULL_SCALE, INDEX_FULL_SCALE, compute, normalizeWeaponId } from '@/constants/physics';
 import { RANK_PRESENTATION, SIMPLE_COLORS } from '@/constants/theme';
 import { WEAPON_DISPLAY } from '@/constants/weapon-specs';
+import { useI18n } from '@/i18n';
 import { resultStyles as styles } from '@/styles/result.styles';
 import type { RankGrade } from '@/utils/percentile';
 import * as MediaLibrary from 'expo-media-library';
@@ -22,6 +23,7 @@ function parseNumber(value: string | undefined, fallback = 0) {
 
 export default function ResultScreen() {
   const router = useRouter();
+  const { language, t } = useI18n();
   const params = useLocalSearchParams<{ weapon?: string; omega?: string; top?: string; total?: string; status?: string; grade?: string; uploadOk?: string }>();
   const weapon = normalizeWeaponId(params.weapon ?? 'pyeongon');
   const omegaValue = Math.max(0, parseNumber(params.omega));
@@ -31,9 +33,15 @@ export default function ResultScreen() {
   const total = Math.max(0, Math.round(parseNumber(params.total)));
   const grade = GRADES.includes(params.grade as RankGrade) ? params.grade as RankGrade : null;
   const ranked = params.status === 'ok' && grade !== null;
-  const config = RANK_PRESENTATION[grade ?? 'fallback'];
-  const badgeLabel = ranked ? config.name : params.status === 'insufficient' ? '첫 기록' : '기록 완료';
-  const rankCaption = ranked ? `상위 ${top}% · ${total.toLocaleString()}명 기준` : badgeLabel;
+  const presentationKey = ranked && grade ? grade : 'fallback';
+  const config = RANK_PRESENTATION[presentationKey];
+  const badgeLabel = ranked
+    ? t(`grade.${presentationKey}`)
+    : params.status === 'insufficient'
+      ? t('rank.firstRecord')
+      : t('rank.recordComplete');
+  const formattedTotal = total.toLocaleString(language === 'ko' ? 'ko-KR' : 'en-US');
+  const rankCaption = ranked ? t('result.rankCaption', { top, total: formattedTotal }) : badgeLabel;
   const viewShotRef = useRef<ViewShot>(null);
 
   const captureScreen = async () => {
@@ -48,10 +56,10 @@ export default function ResultScreen() {
         if (permission.status !== 'granted') throw saveError;
         await MediaLibrary.saveToLibraryAsync(uri);
       }
-      Alert.alert('완료', '결과 화면이 갤러리에 저장되었어요');
+      Alert.alert(t('common.done'), t('result.saved'));
     } catch (error) {
       console.error('캡쳐 오류:', error);
-      Alert.alert('오류', '화면 저장에 실패했어요. 권한을 확인해주세요.');
+      Alert.alert(t('common.error'), t('result.saveFailed'));
     }
   };
 
@@ -62,52 +70,51 @@ export default function ResultScreen() {
           <View style={styles.resultHeaderRow}>
             <WeaponIcon weapon={weapon} size={60} />
             <View style={styles.headerCopy}>
-              <ThemedText style={styles.resultHeaderLabel}>{weaponInfo.name} 측정 결과</ThemedText>
+              <ThemedText style={styles.resultHeaderLabel}>{t('result.header', { weapon: t(`weapon.${weapon}`) })}</ThemedText>
               <ThemedText style={[styles.rankCaption, { color: config.color }]}>{rankCaption}</ThemedText>
             </View>
             <View style={[styles.rankBadge, { borderColor: config.color }]}>
-              <ThemedText style={[styles.rankBadgeText, { color: config.color }]}>{badgeLabel}</ThemedText>
+              <ThemedText numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.7} style={[styles.rankBadgeText, { color: config.color }]}>{badgeLabel}</ThemedText>
             </View>
           </View>
 
           <View style={styles.heroValueBox}>
-            <ThemedText style={styles.heroValueLabel}>상대 타격지수</ThemedText>
+            <ThemedText style={styles.heroValueLabel}>{t('result.strikeIndex')}</ThemedText>
             <View style={styles.heroValueRow}>
               <ThemedText style={[styles.heroValue, { color: weaponInfo.color }]}>{Math.round(index)}</ThemedText>
             </View>
-            <ThemedText style={styles.heroSubValue}>봉 10 rad/s = 100 기준</ThemedText>
+            <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.heroSubValue}>{t('result.baseline', { weapon: t('weapon.staff') })}</ThemedText>
           </View>
 
           <View style={styles.metricList}>
-            <MetricRow label="측정 각속도" value={`${omega.toFixed(1)} rad/s`} origin="measured" note="본체 기준" />
-            <MetricRow label="추정 끝속도" value={`${tipSpeed.toFixed(1)} m/s`} origin="estimated" note="환산계수 적용" />
-            <MetricRow label="등가 운동에너지" value={`${Math.round(energy)} J`} origin="estimated" />
-            <MetricRow label="상대 타격지수" value={`${Math.round(index)}`} origin="estimated" note="봉 10 rad/s = 100" last />
+            <MetricRow label={t('result.angularVelocity')} value={`${omega.toFixed(1)} rad/s`} measured originLabel={t('result.measured')} note={t('result.bodyBaseline')} />
+            <MetricRow label={t('result.tipSpeed')} value={`${tipSpeed.toFixed(1)} m/s`} originLabel={t('result.estimated')} note={t('result.conversionApplied')} />
+            <MetricRow label={t('result.equivalentEnergy')} value={`${Math.round(energy)} J`} originLabel={t('result.estimated')} />
+            <MetricRow label={t('result.strikeIndex')} value={`${Math.round(index)}`} originLabel={t('result.estimated')} note={t('result.baseline', { weapon: t('weapon.staff') })} last />
           </View>
 
-          <GaugeBar label="상대 타격지수" value={index} maxValue={INDEX_FULL_SCALE} color={weaponInfo.color} unit="" />
-          <GaugeBar label="등가 운동에너지" value={energy} maxValue={ENERGY_FULL_SCALE} color={weaponInfo.color} />
+          <GaugeBar label={t('result.strikeIndex')} value={index} maxValue={INDEX_FULL_SCALE} color={weaponInfo.color} unit="" />
+          <GaugeBar label={t('result.equivalentEnergy')} value={energy} maxValue={ENERGY_FULL_SCALE} color={weaponInfo.color} />
 
           <View style={styles.noticeBox}>
             <ThemedText style={styles.noticeText}>
-              이 지수는 무기 비교를 위한 값이며 실제 타격력(N)이 아닙니다.
-              측정된 것은 손잡이의 각속도이고, 끝속도는 계산으로 얻은 추정값입니다.
+              {t('result.notice')}
             </ThemedText>
           </View>
-          {params.uploadOk === 'false' ? <ThemedText style={styles.uploadNotice}>기록을 서버에 저장하지 못했어요. 화면 결과는 그대로 확인할 수 있어요.</ThemedText> : null}
+          {params.uploadOk === 'false' ? <ThemedText style={styles.uploadNotice}>{t('result.uploadFailed')}</ThemedText> : null}
 
           <View style={styles.buttonRow}>
             <TouchableOpacity style={styles.actionButton} onPress={captureScreen} activeOpacity={0.85}>
               <CameraIcon size={18} color={SIMPLE_COLORS.text.primary} />
-              <ThemedText style={styles.actionButtonText}>화면 저장</ThemedText>
+              <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.actionButtonText}>{t('result.saveScreen')}</ThemedText>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionButton} onPress={() => router.replace({ pathname: '/measure', params: { weapon } })} activeOpacity={0.85}>
               <RotateIcon size={18} color={SIMPLE_COLORS.text.primary} />
-              <ThemedText style={styles.actionButtonText}>다시 측정</ThemedText>
+              <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={styles.actionButtonText}>{t('result.measureAgain')}</ThemedText>
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.homeButton} onPress={() => router.replace('/')} activeOpacity={0.85}>
-            <ThemedText style={styles.homeButtonText}>처음으로</ThemedText>
+            <ThemedText style={styles.homeButtonText}>{t('result.home')}</ThemedText>
           </TouchableOpacity>
         </ScrollView>
       </ViewShot>
@@ -115,17 +122,16 @@ export default function ResultScreen() {
   );
 }
 
-function MetricRow({ label, value, origin, note, last }: { label: string; value: string; origin: 'measured' | 'estimated'; note?: string; last?: boolean }) {
-  const isMeasured = origin === 'measured';
+function MetricRow({ label, value, measured = false, originLabel, note, last }: { label: string; value: string; measured?: boolean; originLabel: string; note?: string; last?: boolean }) {
   return (
     <View style={[styles.metricRow, last && styles.metricRowLast]}>
       <View style={styles.metricLabelColumn}>
-        <ThemedText style={styles.metricLabel}>{label}</ThemedText>
+        <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68} style={styles.metricLabel}>{label}</ThemedText>
         <View style={styles.metricBadgeRow}>
-          <View style={[styles.metricBadge, isMeasured ? styles.metricBadgeMeasured : styles.metricBadgeEstimated]}>
-            <ThemedText style={[styles.metricBadgeText, isMeasured ? styles.metricBadgeTextMeasured : styles.metricBadgeTextEstimated]}>{isMeasured ? '실측' : '추정'}</ThemedText>
+          <View style={[styles.metricBadge, measured ? styles.metricBadgeMeasured : styles.metricBadgeEstimated]}>
+            <ThemedText style={[styles.metricBadgeText, measured ? styles.metricBadgeTextMeasured : styles.metricBadgeTextEstimated]}>{originLabel}</ThemedText>
           </View>
-          {note ? <ThemedText style={styles.metricNote}>{note}</ThemedText> : null}
+          {note ? <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65} style={styles.metricNote}>{note}</ThemedText> : null}
         </View>
       </View>
       <ThemedText style={styles.metricValue}>{value}</ThemedText>
@@ -144,7 +150,7 @@ function GaugeBar({ label, value, maxValue, color, unit = 'J' }: { label: string
   return (
     <View style={styles.gaugeContainer}>
       <View style={styles.gaugeHeader}>
-        <ThemedText style={styles.gaugeLabel}>{label}</ThemedText>
+        <ThemedText numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={styles.gaugeLabel}>{label}</ThemedText>
         <ThemedText style={styles.gaugeValueText}>{unit ? `${Math.round(value)} ${unit}` : Math.round(value)}</ThemedText>
       </View>
       <View style={styles.gaugeBackground}>

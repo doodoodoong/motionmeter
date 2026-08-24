@@ -7,13 +7,12 @@ import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useSharedValu
 interface RankStampProps {
   config: RankPresentationConfig;
   progress: SharedValue<number>;
-  label?: string;
+  label: string;
   reducedMotion?: boolean;
 }
 
 export function RankStamp({ config, progress, label, reducedMotion = false }: RankStampProps) {
-  const stampLabel = label ?? config.name;
-  const glyphCount = stampLabel.replace(/\s/g, '').length;
+  const glyphCount = label.replace(/\s/g, '').length;
   const labelFontSize = fontScale(Math.max(22, 34 - Math.max(0, glyphCount - 2) * 6));
   const stampScale = useSharedValue(reducedMotion ? 1 : 2.4);
 
@@ -54,7 +53,7 @@ export function RankStamp({ config, progress, label, reducedMotion = false }: Ra
             numberOfLines={1}
             style={[styles.text, { color: config.color, fontSize: labelFontSize, lineHeight: labelFontSize * 1.15 }]}
           >
-            {stampLabel}
+            {label}
           </Text>
         </View>
       </Animated.View>

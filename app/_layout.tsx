@@ -8,11 +8,12 @@ import 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
+import { I18nProvider, useI18n } from '@/i18n';
 import '@/global.css';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function AppShell() {
   const [fontsLoaded] = useFonts({
     'Pretendard-Regular': require('@/assets/fonts/Pretendard-Regular.otf'),
     'Pretendard-Medium': require('@/assets/fonts/Pretendard-Medium.otf'),
@@ -20,37 +21,42 @@ export default function RootLayout() {
     'Pretendard-Bold': require('@/assets/fonts/Pretendard-Bold.otf'),
     'Pretendard-ExtraBold': require('@/assets/fonts/Pretendard-ExtraBold.otf'),
   });
+  const { hydrated } = useI18n();
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
+    if (fontsLoaded && hydrated) {
+      void SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, hydrated]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !hydrated) {
     return null;
   }
 
   return (
-    <SafeAreaProvider>
+    <>
+      <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="measure" options={{ headerShown: false }} />
+        <Stack.Screen name="rank" options={{ headerShown: false }} />
+        <Stack.Screen name="result" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+      </Stack>
+      <StatusBar style="dark" />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <I18nProvider>
+      <SafeAreaProvider>
       <GluestackUIProvider mode="light">
         <ThemeProvider value={DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen 
-              name="measure" 
-              options={{ 
-                headerShown: false,
-                title: '측정',
-              }} 
-            />
-            <Stack.Screen name="rank" options={{ headerShown: false }} />
-            <Stack.Screen name="result" options={{ headerShown: false }} />
-            <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-          </Stack>
-          <StatusBar style="dark" />
+          <AppShell />
         </ThemeProvider>
       </GluestackUIProvider>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </I18nProvider>
   );
 }

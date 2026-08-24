@@ -1,9 +1,10 @@
 import { ChevronLeftIcon, PlayIcon, StopIcon } from '@/components/icons';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { compute, normalizeWeaponId } from '@/constants/physics';
+import { compute, normalizeWeaponId, WEAPON_QUERY_VALUE } from '@/constants/physics';
 import { SIMPLE_COLORS } from '@/constants/theme';
 import { WEAPON_DISPLAY } from '@/constants/weapon-specs';
+import { useI18n } from '@/i18n';
 import { measureStyles as styles } from '@/styles/measure.styles';
 import { fetchWeaponRank, uploadMeasurementResult } from '@/utils/firebase';
 import { computePercentile, type PercentileResult } from '@/utils/percentile';
@@ -12,7 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Gyroscope } from 'expo-sensors';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Easing, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -36,14 +37,35 @@ function uploadSucceeded(value: unknown): boolean {
 
 export default function MeasureScreen() {
   const router = useRouter();
+  const { t } = useI18n();
   const { weapon } = useLocalSearchParams<{ weapon: string }>();
   const selectedWeapon = normalizeWeaponId(weapon ?? 'pyeongon');
   const weaponColor = WEAPON_DISPLAY[selectedWeapon].color;
-  const weaponKorean = WEAPON_DISPLAY[selectedWeapon].name;
+  // Firestore 전용 고정값과 화면 표시용 번역값을 분리한다.
+  const weaponQueryValue = WEAPON_QUERY_VALUE[selectedWeapon];
+  const weaponLabel = useMemo(() => t(`weapon.${selectedWeapon}`), [selectedWeapon, t]);
+  const copy = useMemo(() => ({
+    alert: t('common.alert'),
+    back: t('common.back'),
+    title: t('measure.title', { weapon: weaponLabel }),
+    readyTitle: t('measure.readyTitle'),
+    readyDescription: t('measure.readyDescription'),
+    rankCaption: t('measure.rankCaption'),
+    start: t('measure.start'),
+    measuringTitle: t('measure.measuringTitle'),
+    measuringDescription: t('measure.measuringDescription'),
+    stop: t('measure.stop'),
+    sensorUnavailable: t('measure.sensorUnavailable'),
+    sensorStartError: t('measure.sensorStartError'),
+  }), [t, weaponLabel]);
 
   const [measurementState, setMeasurementState] = useState<MeasurementState>('ready');
   const [maxAngularVelocity, setMaxAngularVelocity] = useState(0);
   const [currentAngularVelocity, setCurrentAngularVelocity] = useState(0);
+  const maxRecordLabel = useMemo(
+    () => t('measure.maxRecord', { value: maxAngularVelocity.toFixed(2) }),
+    [maxAngularVelocity, t],
+  );
   const gyroSubscriptionRef = useRef<ReturnType<typeof Gyroscope.addListener> | null>(null);
   const lastHapticMaxRef = useRef(0);
   const omegaWindowRef = useRef<number[]>([]);
@@ -137,7 +159,7 @@ export default function MeasureScreen() {
       omegaWindowRef.current = [];
 
       if (!(await Gyroscope.isAvailableAsync())) {
-        Alert.alert('알림', '이 기기에서는 자이로스코프 센서를 사용할 수 없어요.');
+        Alert.alert(copy.alert, copy.sensorUnavailable);
         return;
       }
       if (!mountedRef.current) return;
@@ -164,9 +186,9 @@ export default function MeasureScreen() {
       gyroSubscriptionRef.current = subscription;
       setMeasurementState('measuring');
     } catch {
-      Alert.alert('알림', '센서를 시작하는데 문제가 생겼어요.');
+      Alert.alert(copy.alert, copy.sensorStartError);
     }
-  }, []);
+  }, [copy.alert, copy.sensorStartError, copy.sensorUnavailable]);
 
   const stopMeasurement = useCallback(() => {
     gyroSubscriptionRef.current?.remove();
@@ -186,14 +208,14 @@ export default function MeasureScreen() {
 
     void (async () => {
       // 내 기록이 비교 모집단에 먼저 포함돼 이중 계산되지 않도록 반드시 조회 후 업로드한다.
-      const population = await fetchWeaponRank(weaponKorean, result.omega);
+      const population = await fetchWeaponRank(weaponQueryValue, result.omega);
       const rank = computePercentile(population);
       if (!mountedRef.current || runId !== runIdRef.current) return;
       rankResultRef.current = rank;
       tryFinishSplash();
 
       const uploadResult = await uploadMeasurementResult({
-        weapon: weaponKorean,
+        weapon: weaponQueryValue,
         omegaMax: result.omega,
         tipSpeed: result.tipSpeed,
         energy: result.energy,
@@ -203,7 +225,7 @@ export default function MeasureScreen() {
       uploadOkRef.current = uploadSucceeded(uploadResult);
       tryFinishSplash();
     })();
-  }, [clearPostVideoTimer, player, selectedWeapon, tryFinishSplash, weaponKorean]);
+  }, [clearPostVideoTimer, player, selectedWeapon, tryFinishSplash, weaponQueryValue]);
 
   const spin = trailSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
@@ -214,22 +236,22 @@ export default function MeasureScreen() {
           <ThemedView style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
               <ChevronLeftIcon size={20} color={SIMPLE_COLORS.text.primary} />
-              <ThemedText style={styles.backButtonText}>돌아가기</ThemedText>
+              <ThemedText style={styles.backButtonText}>{copy.back}</ThemedText>
             </TouchableOpacity>
-            <ThemedText style={styles.title}>{weaponKorean} 측정</ThemedText>
+            <ThemedText style={styles.title}>{copy.title}</ThemedText>
           </ThemedView>
         ) : null}
 
         {measurementState === 'ready' ? (
           <View style={styles.stateContainer}>
             <View style={styles.readyBox}>
-              <ThemedText style={styles.readyTitle}>측정 준비</ThemedText>
-              <ThemedText style={styles.readyDescription}>간단한 스트레칭 후 측정 시작 버튼을 눌러주세요</ThemedText>
-              <ThemedText style={styles.rankCaption}>측정 후 오늘의 등급이 공개됩니다</ThemedText>
+              <ThemedText style={styles.readyTitle}>{copy.readyTitle}</ThemedText>
+              <ThemedText style={styles.readyDescription}>{copy.readyDescription}</ThemedText>
+              <ThemedText style={styles.rankCaption}>{copy.rankCaption}</ThemedText>
             </View>
             <TouchableOpacity activeOpacity={0.85} style={[styles.startButton, { backgroundColor: weaponColor }]} onPress={startMeasurement}>
               <PlayIcon size={20} color="#FFFDF8" />
-              <ThemedText style={styles.startButtonText}>측정 시작</ThemedText>
+              <ThemedText style={styles.startButtonText}>{copy.start}</ThemedText>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -237,19 +259,19 @@ export default function MeasureScreen() {
         {measurementState === 'measuring' ? (
           <View style={styles.stateContainer}>
             <View style={styles.measuringBox}>
-              <ThemedText style={styles.measuringTitle}>측정 중</ThemedText>
-              <ThemedText style={styles.measuringDescription}>스마트폰을 힘차게 휘두른 뒤 측정 완료를 눌러주세요</ThemedText>
+              <ThemedText style={styles.measuringTitle}>{copy.measuringTitle}</ThemedText>
+              <ThemedText style={styles.measuringDescription}>{copy.measuringDescription}</ThemedText>
             </View>
             <View style={styles.liveCenter}>
               <Animated.View style={[styles.trail, { transform: [{ rotate: spin }] }]} />
               <ThemedText style={styles.liveValue}>{currentAngularVelocity.toFixed(2)}</ThemedText>
               <ThemedText style={styles.liveUnit}>rad/s</ThemedText>
               <View style={styles.maxLine} />
-              <ThemedText style={styles.maxRecord}>최대 {maxAngularVelocity.toFixed(2)} rad/s</ThemedText>
+              <ThemedText style={styles.maxRecord}>{maxRecordLabel}</ThemedText>
             </View>
             <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement} activeOpacity={0.85}>
               <StopIcon size={18} color="#FFFDF8" />
-              <ThemedText style={styles.stopButtonText}>측정 완료</ThemedText>
+              <ThemedText style={styles.stopButtonText}>{copy.stop}</ThemedText>
             </TouchableOpacity>
           </View>
         ) : null}

@@ -120,8 +120,13 @@ export const STRIKE_COEFFICIENT: Record<WeaponId, number> = {
  */
 export const COEFF_VERSION = 'v2-2026-07';
 
-/** 무기 표시명 */
-export const WEAPON_NAME: Record<WeaponId, string> = {
+/**
+ * Firestore `weapon` 필드에 저장·조회되는 고정 값.
+ * 표시용이 아니며 절대 번역하지 않는다.
+ * 기존 문서 및 복합 인덱스(weapon ASC + maxAngularVelocity ASC)와의
+ * 호환을 위해 한글 리터럴을 그대로 유지한다.
+ */
+export const WEAPON_QUERY_VALUE: Record<WeaponId, string> = {
   pyeongon: '편곤',
   staff: '봉',
 };

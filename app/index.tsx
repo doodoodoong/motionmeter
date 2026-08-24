@@ -1,7 +1,9 @@
+import { LanguageToggle } from "@/components/language-toggle";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BongIcon, PyeongonIcon } from "@/components/weapon-icons";
 import { SIMPLE_COLORS } from "@/constants/theme";
+import { useI18n } from "@/i18n";
 import { homeStyles as styles } from "@/styles/home.styles";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -13,24 +15,30 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useI18n();
+  const pyeongonLabel = t('weapon.pyeongon');
+  const staffLabel = t('weapon.staff');
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* 헤더 */}
         <ThemedView style={styles.header}>
+          <View style={styles.languageToggleRow}>
+            <LanguageToggle />
+          </View>
           <View style={styles.heroRow}>
             <PyeongonIcon size={92} />
             <BongIcon size={92} />
           </View>
           <ThemedText type="title" style={styles.title}>
-            상대 타격지수 측정기
+            {t('home.title')}
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            스마트폰을 휘둘러 상대 타격지수를 측정해보세요
+            {t('home.subtitle1')}
           </ThemedText>
           <ThemedText style={styles.subtitle}>
-            같은 무기를 고른 참가자들과 기록을 겨뤄보세요
+            {t('home.subtitle2')}
           </ThemedText>
         </ThemedView>
 
@@ -45,9 +53,9 @@ export default function HomeScreen() {
               <View style={styles.buttonIconWrapper}>
                 <PyeongonIcon size={28} />
               </View>
-              <ThemedText style={styles.buttonTitle}>편곤 측정하기</ThemedText>
+              <ThemedText style={styles.buttonTitle}>{t('home.measureWeapon', { weapon: pyeongonLabel })}</ThemedText>
             </View>
-            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 편곤의 상대 타격지수를 측정합니다</ThemedText>
+            <ThemedText style={styles.buttonDescription}>{t('home.measureDescription', { weapon: pyeongonLabel })}</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.85}
@@ -58,17 +66,17 @@ export default function HomeScreen() {
               <View style={styles.buttonIconWrapper}>
                 <BongIcon size={28} />
               </View>
-              <ThemedText style={styles.buttonTitle}>봉 측정하기</ThemedText>
+              <ThemedText style={styles.buttonTitle}>{t('home.measureWeapon', { weapon: staffLabel })}</ThemedText>
             </View>
-            <ThemedText style={styles.buttonDescription}>스마트폰을 휘둘러 봉의 상대 타격지수를 측정합니다</ThemedText>
+            <ThemedText style={styles.buttonDescription}>{t('home.measureDescription', { weapon: staffLabel })}</ThemedText>
           </TouchableOpacity>
         </View>
 
         {/* 하단 정보 — 카드 대신 절제된 캡션 */}
         <View style={styles.footer}>
-          <ThemedText style={styles.footerLabel}>측정 원리</ThemedText>
+          <ThemedText style={styles.footerLabel}>{t('home.footerLabel')}</ThemedText>
           <ThemedText style={styles.footerText}>
-            자이로스코프로 손잡이의 각속도를 측정해 봉 기준 상대 타격지수를 계산합니다
+            {t('home.footerText')}
           </ThemedText>
         </View>
       </View>
