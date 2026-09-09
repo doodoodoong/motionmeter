@@ -2,6 +2,8 @@ import { SIMPLE_COLORS, SIMPLE_STYLES } from "@/constants/theme";
 import { fontScale, hp, wp } from "@/utils/responsive";
 import { StyleSheet } from "react-native";
 
+const COMPACT_TRAIL_SIZE = wp(38);
+
 export const measureStyles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -12,14 +14,19 @@ export const measureStyles = StyleSheet.create({
     paddingHorizontal: wp(4),
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     backgroundColor: SIMPLE_COLORS.background.secondary,
     borderBottomWidth: 1,
     borderBottomColor: SIMPLE_COLORS.border.light,
   },
+  headerSide: {
+    minWidth: wp(24),
+    flexShrink: 0,
+  },
+  headerSpacer: {
+    minWidth: wp(24),
+    flexShrink: 0,
+  },
   backButton: {
-    position: 'absolute',
-    left: wp(3),
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: hp(0.5),
@@ -32,16 +39,29 @@ export const measureStyles = StyleSheet.create({
     marginLeft: 2,
   },
   title: {
+    flex: 1,
     color: SIMPLE_COLORS.text.primary,
     fontSize: fontScale(18),
     fontWeight: '600',
+    textAlign: 'center',
   },
 
   stateContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: wp(6),
+    paddingBottom: hp(2),
+  },
+  stateBody: {
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stateFooter: {
+    flexShrink: 0,
+    width: '100%',
   },
 
   // --- Ready ---
@@ -105,6 +125,7 @@ export const measureStyles = StyleSheet.create({
   },
   liveCenter: {
     width: '100%',
+    minHeight: wp(48),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: hp(7),
@@ -169,5 +190,28 @@ export const measureStyles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
+  },
+});
+
+export const measureCompactStyles = StyleSheet.create({
+  readyBox: {
+    paddingVertical: hp(2),
+    marginBottom: hp(2),
+  },
+  measuringBox: {
+    marginBottom: hp(3),
+  },
+  liveCenter: {
+    minHeight: COMPACT_TRAIL_SIZE,
+    marginBottom: hp(3),
+  },
+  trail: {
+    width: COMPACT_TRAIL_SIZE,
+    height: COMPACT_TRAIL_SIZE,
+    borderRadius: COMPACT_TRAIL_SIZE / 2,
+  },
+  liveValue: {
+    fontSize: fontScale(34),
+    lineHeight: fontScale(44),
   },
 });

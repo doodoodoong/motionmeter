@@ -9,11 +9,23 @@ interface RankStampProps {
   progress: SharedValue<number>;
   label: string;
   reducedMotion?: boolean;
+  size?: number;
 }
 
-export function RankStamp({ config, progress, label, reducedMotion = false }: RankStampProps) {
+export function RankStamp({ config, progress, label, reducedMotion = false, size }: RankStampProps) {
   const glyphCount = label.replace(/\s/g, '').length;
-  const labelFontSize = fontScale(Math.max(22, 34 - Math.max(0, glyphCount - 2) * 6));
+  const sizeRatio = size === undefined ? 1 : size / 270;
+  const labelFontSize = fontScale(Math.max(22, 34 - Math.max(0, glyphCount - 2) * 6)) * sizeRatio;
+  const frameSize = size === undefined ? wp(54) : size * 0.75;
+  const stampSize = size === undefined ? wp(36) : size * 0.5;
+  const stampBorderWidth = size === undefined ? 4 : size * (4 / 270);
+  const stampBorderRadius = size === undefined ? wp(3) : size * (11.25 / 270);
+  const stampPadding = size === undefined ? wp(1.5) : size * (5.625 / 270);
+  const innerBorderWidth = size === undefined ? 1.5 : size * (1.5 / 270);
+  const innerBorderRadius = size === undefined ? wp(1.5) : size * (5.625 / 270);
+  const inkBorderWidth = size === undefined ? 1.5 : size * (1.5 / 270);
+  const textOffset = size === undefined ? 3 : size * (3 / 270);
+  const letterSpacing = size === undefined ? 3 : size * (3 / 270);
   const stampScale = useSharedValue(reducedMotion ? 1 : 2.4);
 
   useEffect(() => {
@@ -37,21 +49,28 @@ export function RankStamp({ config, progress, label, reducedMotion = false }: Ra
   }));
 
   return (
-    <View style={styles.frame} pointerEvents="none">
+    <View style={[styles.frame, { width: frameSize, height: frameSize }]} pointerEvents="none">
       {Array.from({ length: config.inkCircleCount }, (_, index) => (
         <View
           key={index}
           style={[
             styles.inkCircle,
-            { borderColor: config.color, width: wp(38 + index * 7), height: wp(38 + index * 7), opacity: 0.25 - index * 0.07 },
+            {
+              borderColor: config.color,
+              borderWidth: inkBorderWidth,
+              width: size === undefined ? wp(38 + index * 7) : size * ((142.5 + index * 26.25) / 270),
+              height: size === undefined ? wp(38 + index * 7) : size * ((142.5 + index * 26.25) / 270),
+              opacity: 0.25 - index * 0.07,
+            },
           ]}
         />
       ))}
-      <Animated.View style={[styles.stamp, { borderColor: config.color }, animatedStyle]}>
-        <View style={[styles.innerBorder, { borderColor: config.color }]}>
+      <Animated.View style={[styles.stamp, { width: stampSize, height: stampSize, borderColor: config.color, borderWidth: stampBorderWidth, borderRadius: stampBorderRadius, padding: stampPadding }, animatedStyle]}>
+        <View style={[styles.innerBorder, { borderColor: config.color, borderWidth: innerBorderWidth, borderRadius: innerBorderRadius }]}>
           <Text
             numberOfLines={1}
-            style={[styles.text, { color: config.color, fontSize: labelFontSize, lineHeight: labelFontSize * 1.15 }]}
+            maxFontSizeMultiplier={1.2}
+            style={[styles.text, { color: config.color, fontSize: labelFontSize, lineHeight: labelFontSize * 1.15, marginLeft: textOffset, letterSpacing }]}
           >
             {label}
           </Text>
@@ -62,22 +81,19 @@ export function RankStamp({ config, progress, label, reducedMotion = false }: Ra
 }
 
 const styles = StyleSheet.create({
-  frame: { width: wp(54), height: wp(54), alignItems: 'center', justifyContent: 'center' },
+  frame: { alignItems: 'center', justifyContent: 'center' },
   stamp: {
-    width: wp(36), height: wp(36), borderWidth: 4, borderRadius: wp(3),
     alignItems: 'center', justifyContent: 'center', padding: wp(1.5),
   },
   innerBorder: {
-    width: '100%', height: '100%', borderWidth: 1.5, borderRadius: wp(1.5),
+    width: '100%', height: '100%',
     alignItems: 'center', justifyContent: 'center',
   },
   text: {
     width: '100%',
-    marginLeft: 3,
     fontFamily: FONT_FAMILY.extrabold,
-    letterSpacing: 3,
     textAlign: 'center',
     includeFontPadding: false,
   },
-  inkCircle: { position: 'absolute', borderWidth: 1.5, borderRadius: 999 },
+  inkCircle: { position: 'absolute', borderRadius: 999 },
 });
