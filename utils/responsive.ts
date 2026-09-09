@@ -1,4 +1,81 @@
-import { Dimensions, PixelRatio } from "react-native";
+import { useMemo } from "react";
+import { Dimensions, PixelRatio, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+export const SHORT_SCREEN_THRESHOLD = 700;
+
+export interface ResponsiveMetricsInput {
+  width: number;
+  height: number;
+  insets: { top: number; bottom: number; left: number; right: number };
+  systemFontScale: number;
+}
+
+export interface ResponsiveMetrics {
+  width: number;
+  height: number;
+  usableHeight: number;
+  usableWidth: number;
+  isShort: boolean;
+  isNarrow: boolean;
+  systemFontScale: number;
+  /** isShort일 때 compact 값, 아니면 regular 값을 고른다 */
+  pick: <T>(regular: T, compact: T) => T;
+}
+
+export function getResponsiveMetrics(
+  input: ResponsiveMetricsInput
+): ResponsiveMetrics {
+  const { width, height, insets, systemFontScale } = input;
+  const usableHeight = height - insets.top - insets.bottom;
+  const usableWidth = width - insets.left - insets.right;
+  const isShort = usableHeight < SHORT_SCREEN_THRESHOLD;
+
+  return {
+    width,
+    height,
+    usableHeight,
+    usableWidth,
+    isShort,
+    isNarrow: width < 375,
+    systemFontScale,
+    pick: <T>(regular: T, compact: T): T => isShort ? compact : regular,
+  };
+}
+
+export function useResponsiveMetrics(): ResponsiveMetrics {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const systemFontScale = PixelRatio.getFontScale();
+
+  return useMemo(
+    () => getResponsiveMetrics({ width, height, insets, systemFontScale }),
+    [
+      height,
+      insets.bottom,
+      insets.left,
+      insets.right,
+      insets.top,
+      systemFontScale,
+      width,
+    ]
+  );
+}
+
+/** metrics 기반으로 세로 공간까지 반영한 폰트 크기. 짧은 화면에서 축소된다. */
+export function metricFontSize(
+  metrics: ResponsiveMetrics,
+  size: number
+): number {
+  const widthRatio = metrics.width / 375;
+  const heightRatio = metrics.usableHeight / 812;
+  const ratio = Math.min(widthRatio, heightRatio);
+  const scaledSize = size + (size * ratio - size) * 0.3;
+  const minSize = size * 0.8;
+  const maxSize = size * 1.3;
+
+  return Math.max(minSize, Math.min(maxSize, scaledSize));
+}
 
 // 화면 크기 가져오기
 export const SCREEN_WIDTH = Dimensions.get("window").width;

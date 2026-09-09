@@ -7,8 +7,12 @@ export const homeStyles = StyleSheet.create({
     flex: 1,
     backgroundColor: SIMPLE_COLORS.background.primary,
   },
-  container: {
+  scrollView: {
     flex: 1,
+    backgroundColor: SIMPLE_COLORS.background.primary,
+  },
+  container: {
+    flexGrow: 1,
     backgroundColor: SIMPLE_COLORS.background.primary,
     justifyContent: 'space-between',
     paddingVertical: hp(1.5),
@@ -60,6 +64,7 @@ export const homeStyles = StyleSheet.create({
   title: {
     color: SIMPLE_COLORS.text.primary,
     fontSize: fontScale(26),
+    lineHeight: fontScale(34),
     fontWeight: '700',
     textAlign: 'center',
     marginBottom: hp(1),
@@ -67,11 +72,10 @@ export const homeStyles = StyleSheet.create({
   subtitle: {
     color: SIMPLE_COLORS.text.secondary,
     fontSize: fontScale(15),
+    lineHeight: fontScale(22),
     textAlign: 'center',
   },
   buttonContainer: {
-    flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: wp(6),
   },
   selectionButton: {
@@ -79,6 +83,9 @@ export const homeStyles = StyleSheet.create({
     paddingVertical: hp(2.5),
     paddingHorizontal: wp(4),
     alignItems: 'center',
+  },
+  selectionButtonSpacing: {
+    marginBottom: hp(1.8),
   },
   buttonTitleRow: {
     flexDirection: 'row',
@@ -92,6 +99,7 @@ export const homeStyles = StyleSheet.create({
   buttonTitle: {
     color: '#FFFDF8',
     fontSize: fontScale(20),
+    lineHeight: fontScale(26),
     fontWeight: '700',
     marginBottom: hp(0.5),
     textAlign: 'center',
@@ -99,6 +107,7 @@ export const homeStyles = StyleSheet.create({
   buttonDescription: {
     color: 'rgba(255, 253, 248, 0.82)',
     fontSize: fontScale(13),
+    lineHeight: fontScale(20),
     textAlign: 'center',
   },
   footer: {
@@ -109,6 +118,7 @@ export const homeStyles = StyleSheet.create({
   footerLabel: {
     color: SIMPLE_COLORS.primary,
     fontSize: fontScale(13),
+    lineHeight: fontScale(18),
     fontWeight: '600',
     marginBottom: hp(0.6),
     letterSpacing: 1,

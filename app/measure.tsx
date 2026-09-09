@@ -5,9 +5,10 @@ import { compute, normalizeWeaponId, WEAPON_QUERY_VALUE } from '@/constants/phys
 import { SIMPLE_COLORS } from '@/constants/theme';
 import { WEAPON_DISPLAY } from '@/constants/weapon-specs';
 import { useI18n } from '@/i18n';
-import { measureStyles as styles } from '@/styles/measure.styles';
+import { measureCompactStyles as compactStyles, measureStyles as styles } from '@/styles/measure.styles';
 import { fetchWeaponRank, uploadMeasurementResult } from '@/utils/firebase';
 import { computePercentile, type PercentileResult } from '@/utils/percentile';
+import { useResponsiveMetrics } from '@/utils/responsive';
 import { useEventListener } from 'expo';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -38,6 +39,7 @@ function uploadSucceeded(value: unknown): boolean {
 export default function MeasureScreen() {
   const router = useRouter();
   const { t } = useI18n();
+  const { isShort } = useResponsiveMetrics();
   const { weapon } = useLocalSearchParams<{ weapon: string }>();
   const selectedWeapon = normalizeWeaponId(weapon ?? 'pyeongon');
   const weaponColor = WEAPON_DISPLAY[selectedWeapon].color;
@@ -234,45 +236,62 @@ export default function MeasureScreen() {
       <SafeAreaView style={styles.safeArea}>
         {measurementState !== 'splash' ? (
           <ThemedView style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-              <ChevronLeftIcon size={20} color={SIMPLE_COLORS.text.primary} />
-              <ThemedText style={styles.backButtonText}>{copy.back}</ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={styles.title}>{copy.title}</ThemedText>
+            <View style={styles.headerSide}>
+              <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                <ChevronLeftIcon size={20} color={SIMPLE_COLORS.text.primary} />
+                <ThemedText style={styles.backButtonText}>{copy.back}</ThemedText>
+              </TouchableOpacity>
+            </View>
+            <ThemedText style={styles.title} maxFontSizeMultiplier={1.3} numberOfLines={1}>{copy.title}</ThemedText>
+            <View style={styles.headerSpacer} />
           </ThemedView>
         ) : null}
 
         {measurementState === 'ready' ? (
           <View style={styles.stateContainer}>
-            <View style={styles.readyBox}>
-              <ThemedText style={styles.readyTitle}>{copy.readyTitle}</ThemedText>
-              <ThemedText style={styles.readyDescription}>{copy.readyDescription}</ThemedText>
-              <ThemedText style={styles.rankCaption}>{copy.rankCaption}</ThemedText>
+            <View style={styles.stateBody}>
+              <View style={[styles.readyBox, isShort && compactStyles.readyBox]}>
+                <ThemedText style={styles.readyTitle}>{copy.readyTitle}</ThemedText>
+                <ThemedText style={styles.readyDescription}>{copy.readyDescription}</ThemedText>
+                <ThemedText style={styles.rankCaption}>{copy.rankCaption}</ThemedText>
+              </View>
             </View>
-            <TouchableOpacity activeOpacity={0.85} style={[styles.startButton, { backgroundColor: weaponColor }]} onPress={startMeasurement}>
-              <PlayIcon size={20} color="#FFFDF8" />
-              <ThemedText style={styles.startButtonText}>{copy.start}</ThemedText>
-            </TouchableOpacity>
+            <View style={styles.stateFooter}>
+              <TouchableOpacity activeOpacity={0.85} style={[styles.startButton, { backgroundColor: weaponColor }]} onPress={startMeasurement}>
+                <PlayIcon size={20} color="#FFFDF8" />
+                <ThemedText style={styles.startButtonText} maxFontSizeMultiplier={1.3} numberOfLines={1}>{copy.start}</ThemedText>
+              </TouchableOpacity>
+            </View>
           </View>
         ) : null}
 
         {measurementState === 'measuring' ? (
           <View style={styles.stateContainer}>
-            <View style={styles.measuringBox}>
-              <ThemedText style={styles.measuringTitle}>{copy.measuringTitle}</ThemedText>
-              <ThemedText style={styles.measuringDescription}>{copy.measuringDescription}</ThemedText>
+            <View style={styles.stateBody}>
+              <View style={[styles.measuringBox, isShort && compactStyles.measuringBox]}>
+                <ThemedText style={styles.measuringTitle}>{copy.measuringTitle}</ThemedText>
+                <ThemedText style={styles.measuringDescription}>{copy.measuringDescription}</ThemedText>
+              </View>
+              <View style={[styles.liveCenter, isShort && compactStyles.liveCenter]}>
+                <Animated.View style={[styles.trail, isShort && compactStyles.trail, { transform: [{ rotate: spin }] }]} />
+                <ThemedText
+                  style={[styles.liveValue, isShort && compactStyles.liveValue]}
+                  maxFontSizeMultiplier={1.2}
+                  numberOfLines={1}
+                >
+                  {currentAngularVelocity.toFixed(2)}
+                </ThemedText>
+                <ThemedText style={styles.liveUnit}>rad/s</ThemedText>
+                <View style={styles.maxLine} />
+                <ThemedText style={styles.maxRecord}>{maxRecordLabel}</ThemedText>
+              </View>
             </View>
-            <View style={styles.liveCenter}>
-              <Animated.View style={[styles.trail, { transform: [{ rotate: spin }] }]} />
-              <ThemedText style={styles.liveValue}>{currentAngularVelocity.toFixed(2)}</ThemedText>
-              <ThemedText style={styles.liveUnit}>rad/s</ThemedText>
-              <View style={styles.maxLine} />
-              <ThemedText style={styles.maxRecord}>{maxRecordLabel}</ThemedText>
+            <View style={styles.stateFooter}>
+              <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement} activeOpacity={0.85}>
+                <StopIcon size={18} color="#FFFDF8" />
+                <ThemedText style={styles.stopButtonText} maxFontSizeMultiplier={1.3} numberOfLines={1}>{copy.stop}</ThemedText>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.stopButton} onPress={stopMeasurement} activeOpacity={0.85}>
-              <StopIcon size={18} color="#FFFDF8" />
-              <ThemedText style={styles.stopButtonText}>{copy.stop}</ThemedText>
-            </TouchableOpacity>
           </View>
         ) : null}
       </SafeAreaView>

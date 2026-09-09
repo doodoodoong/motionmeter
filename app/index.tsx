@@ -5,9 +5,11 @@ import { BongIcon, PyeongonIcon } from "@/components/weapon-icons";
 import { SIMPLE_COLORS } from "@/constants/theme";
 import { useI18n } from "@/i18n";
 import { homeStyles as styles } from "@/styles/home.styles";
+import { useResponsiveMetrics } from "@/utils/responsive";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  ScrollView,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -16,20 +18,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useI18n();
+  const { pick } = useResponsiveMetrics();
   const pyeongonLabel = t('weapon.pyeongon');
   const staffLabel = t('weapon.staff');
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         {/* 헤더 */}
         <ThemedView style={styles.header}>
           <View style={styles.languageToggleRow}>
             <LanguageToggle />
           </View>
           <View style={styles.heroRow}>
-            <PyeongonIcon size={92} />
-            <BongIcon size={92} />
+            <PyeongonIcon size={pick(92, 64)} />
+            <BongIcon size={pick(92, 64)} />
           </View>
           <ThemedText type="title" style={styles.title}>
             {t('home.title')}
@@ -46,7 +54,7 @@ export default function HomeScreen() {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             activeOpacity={0.85}
-            style={[styles.selectionButton, { backgroundColor: SIMPLE_COLORS.weapon.flail, marginBottom: 14 }]}
+            style={[styles.selectionButton, styles.selectionButtonSpacing, { backgroundColor: SIMPLE_COLORS.weapon.flail }]}
             onPress={() => router.push({ pathname: "/measure", params: { weapon: 'pyeongon' } })}
           >
             <View style={styles.buttonTitleRow}>
@@ -79,7 +87,7 @@ export default function HomeScreen() {
             {t('home.footerText')}
           </ThemedText>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

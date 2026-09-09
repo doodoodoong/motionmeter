@@ -7,12 +7,13 @@ import { compute, normalizeWeaponId } from '@/constants/physics';
 import { RANK_PRESENTATION, type RankPresentationKey } from '@/constants/theme';
 import { useI18n } from '@/i18n';
 import type { RankGrade } from '@/utils/percentile';
+import { useResponsiveMetrics } from '@/utils/responsive';
 import { rankStyles as styles } from '@/styles/rank.styles';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, type LayoutChangeEvent, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { cancelAnimation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -35,6 +36,7 @@ function performHaptic(kind: 'heavy' | 'medium' | 'light' | 'success') {
 
 export default function RankScreen() {
   const router = useRouter();
+  const metrics = useResponsiveMetrics();
   const { language, t } = useI18n();
   const params = useLocalSearchParams<{
     weapon?: string; omega?: string; top?: string; total?: string; status?: string; grade?: string; uploadOk?: string;
@@ -62,7 +64,17 @@ export default function RankScreen() {
   const progress = useSharedValue(0);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [buttonEnabled, setButtonEnabled] = useState(false);
+  const [arenaSize, setArenaSize] = useState<{ width: number; height: number } | null>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const visualSize = arenaSize
+    ? Math.max(170, Math.min(270, Math.min(arenaSize.width, arenaSize.height) * 0.9))
+    : metrics.pick(270, 210);
+
+  const handleArenaLayout = useCallback((event: LayoutChangeEvent) => {
+    const width = Math.round(event.nativeEvent.layout.width);
+    const height = Math.round(event.nativeEvent.layout.height);
+    setArenaSize((current) => current?.width === width && current.height === height ? current : { width, height });
+  }, []);
 
   const flashStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.05, 0.14], [0.72, 0.48, 0], 'clamp'),
@@ -112,10 +124,10 @@ export default function RankScreen() {
 
         <View style={styles.content}>
           <Text style={styles.eyebrow}>{t('rank.eyebrow')}</Text>
-          <View style={styles.arena}>
+          <View style={styles.arena} onLayout={handleArenaLayout}>
             {showPercentile ? (
               <View style={styles.gaugeLayer}>
-                <RankGauge topPercent={topPercent} color={config.color} progress={progress} double={config.doubleGauge} />
+                <RankGauge topPercent={topPercent} color={config.color} progress={progress} double={config.doubleGauge} size={visualSize} />
               </View>
             ) : null}
             <View style={styles.mainCopy}>
@@ -133,7 +145,7 @@ export default function RankScreen() {
               {showPercentile ? <Text style={styles.population}>{t('rank.population', { total: formattedTotal })}</Text> : null}
               <Text style={styles.indexCaption}>{t('rank.indexCaption', { index: Math.round(physicalResult.index) })}</Text>
               <View style={styles.stampSpacing}>
-                <RankStamp config={config} progress={progress} label={stampLabel} reducedMotion={reducedMotion} />
+                <RankStamp config={config} progress={progress} label={stampLabel} reducedMotion={reducedMotion} size={visualSize} />
               </View>
             </View>
           </View>
